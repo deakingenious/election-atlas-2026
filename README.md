@@ -63,3 +63,12 @@ No npm packages are required, no tracking or analytics, and no ballot selections
 The U.S. map uses Census-derived state boundaries via the ISC-licensed [us-atlas](https://github.com/topojson/us-atlas) package. Render installs this dependency with npm install. The server exposes projected TopoJSON at /api/map-topology and the dashboard converts it to an interactive SVG. No browser CDN, API key or external map service is required.
 
 Gray indicates no reported votes. When reporting, state fills identify which party leads in more of that state's **reporting U.S. House districts**; they do not indicate race calls, projected winners, or statewide vote totals. Select a state for its district breakdown.
+
+## Candidate rosters, party affiliations, and portraits
+
+- California SOS publishes **contest codes (R26GG.txt)** and **candidate records (C26GG.txt)** separately from **vote totals (V26GG.txt)**. Candidate rosters now populate even before vote reporting begins. The optional vote file may be unavailable before 8 p.m. Pacific.
+- Federal House/Senate candidate rosters are loaded separately from [DeepSyte's 2026 general-election roster](https://deepsyte.app/data/candidates-2026.csv), sourced to state-certified ballot lists where available and nominee records elsewhere. This independent list is *not* an official certification of every candidate in every state. The parser reports errors through `/api/national?office=house` or `senate` instead of silently guessing.
+- The personal 54-item ballot also preserves party names from the bundled ballot choices when a source has not provided them. The nonpartisan Los Angeles mayoral election uses the two [City Clerk-certified finalists](https://clerk.lacity.gov/elections/municipal-elections).
+- A small, manually identified set of notable candidates can show photographs from Wikipedia/Wikimedia Commons when available. Other candidates display styled initial avatars. This avoids mismatched photographs and gracefully handles missing images.
+- Names, images, and party affiliations are **independent of vote totals**. No returns or winners are invented.
+
