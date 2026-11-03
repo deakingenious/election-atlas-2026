@@ -65,10 +65,12 @@ async function national(office){
  const fetches=[
   upstream(`https://openamerica.io/elections/results.json?year=2026&office=${official}`).then(r=>success(true,normalizeOpenAmerica(r,office))).catch(e=>success(false,[],e.message)),
   upstream(`https://watch.vote/api/elections/2026/results?office=${office}`).then(r=>success(true,normalizeWatch(r,office))).catch(e=>success(false,[],e.message)),
-  ...(office==='house'?[getCA()]:[]),
-  getFederalRoster()
+  getFederalRoster(),
+  ...(office==='house'?[getCA()]:[])
  ];
- const [a,w,ca,roster]=await Promise.all(fetches);
+ // Always keep the shared result providers in fixed positions. Senate does
+ // not fetch CA House data, so conditional providers must come last.
+ const [a,w,roster,ca]=await Promise.all(fetches);
  const races=mergeNational(a.data,w.data,ca?.data?.races||[],roster.data.races).filter(r=>r.office===office);
  return {date:'2026-11-03',office,lastFetched:new Date().toISOString(),races,reported:races.filter(r=>r.reported).length,coverage:races.filter(r=>r.source!=='Not yet covered').length,sources:[{name:'Open America — official state feeds (22 states)',ok:a.ok,url:LINKS.national,error:a.error},{name:'watch.vote election results',ok:w.ok,url:LINKS.watch,error:w.error},...(ca?[{name:'California Secretary of State',ok:ca.ok,url:LINKS.sos,error:ca.error}]:[]),{name:'Federal general-election candidate roster',ok:roster.ok,url:CANDIDATES_CSV,error:roster.error,contests:roster.data.contests}]};
 }
