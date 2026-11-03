@@ -33,6 +33,10 @@ jobs:
         if: github.event_name == 'pull_request'
         continue-on-error: true
         run: node scripts/probe-wikidata-fec.mjs
+      - name: Check Bioguide portrait coverage
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: node scripts/probe-bioguide-coverage.mjs
       - name: Probe optional live portrait provider contract
         if: github.event_name == 'pull_request'
         continue-on-error: true
