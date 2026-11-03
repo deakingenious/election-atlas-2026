@@ -72,3 +72,16 @@ Gray indicates no reported votes. When reporting, state fills identify which par
 - A small, manually identified set of notable candidates can show photographs from Wikipedia/Wikimedia Commons when available. Other candidates display styled initial avatars. This avoids mismatched photographs and gracefully handles missing images.
 - Names, images, and party affiliations are **independent of vote totals**. No returns or winners are invented.
 
+
+## Federal candidate portrait enrichment (optional)
+
+The public **House & Senate** view now requests additional **verified portrait metadata** for named federal candidates. The browser sends batches of up to 100 candidate identities (name, office, state and House district) to `POST /api/portrait-enrichment` on our Render server. The server then calls watch.vote's [verified 2026 candidate portrait service](https://watch.vote/docs/api-reference/elections), which documents a 150-lookup batch endpoint.
+
+**Safeguards**
+- Names alone never identify a photograph. A returned photo must match the candidate identity; unrecognized provider response formats or anonymous ordered lists are *not* trusted.
+- Cache verified matches for 24 hours and verified misses for 6 hours. Cap requests globally within 10-minute windows, respect 429 Retry-After and use bounded individual GET fallbacks if the batch schema cannot be safely parsed.
+- No third-party calls from the browser. Photo enrichment is separate from election-result routes and cannot modify votes, reporting states or candidate names.
+- Preserve the curated local official-portrait catalog, avoid replacing it with unrelated images, and show initials for unresolved or unavailable photos.
+- The Data Sources view reports attempted federal lookups, matching photo metadata and provider errors. Source/author/license metadata is retained and shown with image title text.
+
+**Known limitation:** watch.vote verifies overrides and currently serving members; many challengers may still have no licensable verified photo. On November 3, a GitHub Actions live probe confirmed the POST batch route accepts `{lookups:[...]}` and returns named `portraits` and `unavailable` records with attribution and licensing. Individual GET requests returned HTTP 403 from the GitHub runner, so normal operation avoids GET fallback when the batch contract succeeds. Internet-dependent portrait coverage must still be checked on Render after merging. The feature does not claim complete coverage of all federal candidates.

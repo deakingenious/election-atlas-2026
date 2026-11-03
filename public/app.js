@@ -5,7 +5,7 @@ const cap=s=>String(s||'').replace(/\b\w/g,c=>c.toUpperCase());
 const html=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const reportStart=Date.parse('2026-11-04T04:00:00Z');
 const serverURLs={la:'https://results.lavote.gov/electionresults/json?electionid=4348',sos:'https://electionresults.sos.ca.gov/',national:'https://openamerica.io/elections/api/',watch:'https://watch.vote/docs/api-reference/elections'};
-const ui={view:'overview',query:'',ballotTab:'all',caTab:'all',nationalTab:'house',nationalState:'all',onlyReporting:false,expanded:new Set(),page:1,selectedState:'CA',theme:'dark',demo:false,loading:true,updated:null,sourceStatus:[],portraits:{},imageLoaded:new Set(),imageFailed:new Set()};
+const ui={view:'overview',query:'',ballotTab:'all',caTab:'all',nationalTab:'house',nationalState:'all',onlyReporting:false,expanded:new Set(),page:1,selectedState:'CA',theme:'dark',demo:false,loading:true,updated:null,sourceStatus:[],portraits:{},imageLoaded:new Set(),imageFailed:new Set(),federalPortraits:{},federalPhotoRequested:new Set(),federalPhotoBusy:false,federalPhotoRescan:false,federalPhotoStats:{requested:0,matched:0,unavailable:0,lastError:null,cooldown:false}};
 const state={ballot:[],mayor:null,ca:[],house:[],senate:[],tiles:{},states:{},mapShapes:[],mapGeoError:null,nationalMeta:{},sources:[],errors:[]};
 let refreshPromise=null;
 const byId=id=>document.getElementById(id);
@@ -14,10 +14,10 @@ function relTime(iso){if(!iso)return 'No source timestamp';const d=new Date(iso)
 function partyClass(c){const p=String(c.party||'').toLowerCase();const n=String(c.name||'').toUpperCase();return n==='YES'?'yes':p.startsWith('d')||p.includes('democrat')?'dem':p.startsWith('r')||p.includes('republican')?'rep':'other'}
 function candidatePortrait(c,large=false){
  const key=String(c.name||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
- const photo=ui.portraits[key];
+ const photo=c.enrichedPortrait?.image?c.enrichedPortrait:ui.portraits[key];
  const initials=String(c.name||'?').split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join('').toUpperCase();
  const fallback=`<span class="candidate-avatar-initials" aria-hidden="true">${html(initials)}</span>`;
- return `<span class="candidate-avatar ${large?'candidate-avatar-large':''} ${partyClass(c)}">${fallback}${photo?.image?`<img alt="Portrait of ${html(c.name)}" loading="${large?'eager':'lazy'}" decoding="async" referrerpolicy="no-referrer" data-photo-key="${html(key)}" data-proxy-src="${html(photo.proxyUrl||'')}" src="${html(photo.image)}"/>`:''}</span>`;
+ return `<span class="candidate-avatar ${large?'candidate-avatar-large':''} ${partyClass(c)}">${fallback}${photo?.image?`<img alt="Portrait of ${html(c.name)}" loading="${large?'eager':'lazy'}" decoding="async" referrerpolicy="no-referrer" data-photo-key="${html(key)}" title="${html([photo.credit,photo.license].filter(Boolean).join(' · '))}" data-proxy-src="${html(photo.proxyUrl||'')}" src="${html(photo.image)}"/>`:''}</span>`;
 }
 function candidateShort(c){const p=partyClass(c);return c.name==='YES'||c.name==='NO'?c.name:(p==='dem'?'D':p==='rep'?'R':'•')}
 function sourceTag(r){const label=r.scope?.includes('Los Angeles')?'LA COUNTY':r.scope?.includes('California')?'STATEWIDE / DISTRICT':'SOURCE LIMITED';return `<span class="data-tag ${label==='LA COUNTY'?'source-la':'source-ca'}">${label}</span>`;}
@@ -26,6 +26,78 @@ function getBallot(){return ui.demo?state.ballot.map((r,i)=>demoRace(r,i)):state
 function getMayor(){return ui.demo&&state.mayor?demoRace(state.mayor,11):state.mayor}
 function getCA(){return ui.demo?state.ca.map((r,i)=>demoRace(r,i)):state.ca}
 function getNational(office){const source=office==='house'?state.house:state.senate;return ui.demo?source.map((r,i)=>demoRace(r,i)):source}
+// Federal images are keyed by office, state, district AND exact normalized name.
+// This prevents assigning a similarly named candidate's image to the wrong seat.
+function federalPhotoLookup(r,c){
+ if(!r||!c?.name||!['house','senate'].includes(r.office)||!/^[A-Z]{2}$/.test(r.state||''))return null;
+ if(/^(?:YES|NO|CANDIDATE\s*#)/i.test(c.name))return null;
+ const lookup={name:c.name,state:r.state,office:r.office};
+ if(r.office==='house'){
+  const district=String(r.id||'').match(/-(\d{1,2})$/);
+  if(!district)return null;
+  lookup.district=String(Number(district[1])).padStart(2,'0');
+ }
+ if(c.candidateId)lookup.candidateId=c.candidateId;
+ return lookup;
+}
+function federalPhotoKey(lookup){
+ if(!lookup)return null;
+ return lookup.office+'|'+lookup.state+'|'+(lookup.district||'S')+'|'+String(lookup.name||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+}
+function applyFederalPhotos(){
+ for(const race of [...state.house,...state.senate])for(const candidate of race.candidates||[]){
+  const key=federalPhotoKey(federalPhotoLookup(race,candidate));
+  if(key&&ui.federalPortraits[key])candidate.enrichedPortrait=ui.federalPortraits[key];
+ }
+}
+async function enrichFederalPortraits(){
+ if(ui.federalPhotoBusy){ui.federalPhotoRescan=true;return}
+ if(ui.view!=='national'||document.hidden)return;
+ const office=ui.nationalTab;
+ const rows=(office==='senate'?state.senate:state.house).filter(r=>ui.nationalState==='all'||r.state===ui.nationalState);
+ const lookups=[];
+ for(const race of rows)for(const candidate of race.candidates||[]){
+  const lookup=federalPhotoLookup(race,candidate),key=federalPhotoKey(lookup);
+  if(!lookup||!key||ui.federalPhotoRequested.has(key))continue;
+  if(ui.portraits[String(candidate.name||'').toUpperCase().replace(/[^A-Z0-9]/g,'')]?.image)continue;
+  lookups.push(lookup);
+ }
+ if(!lookups.length)return;
+ ui.federalPhotoBusy=true;
+ try{
+  for(let i=0;i<lookups.length;i+=100){
+   if(document.hidden)break;
+   const batch=lookups.slice(i,i+100);
+   for(const item of batch)ui.federalPhotoRequested.add(federalPhotoKey(item));
+   try{
+    const response=await fetch('/api/portrait-enrichment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lookups:batch})});
+    if(!response.ok)throw Error('Portrait enrichment: HTTP '+response.status);
+    const data=await response.json();
+    Object.assign(ui.federalPortraits,data.portraits||{});
+    ui.federalPhotoStats.requested+=batch.length;
+    ui.federalPhotoStats.matched=Object.keys(ui.federalPortraits).length;
+    ui.federalPhotoStats.unavailable+=data.pending||0;
+    ui.federalPhotoStats.lastError=data.providerError||null;
+    ui.federalPhotoStats.cooldown=Boolean(data.cooldown);
+    applyFederalPhotos();
+    if(ui.view==='national'||ui.view==='sources')render();
+    // Rate-limit and upstream errors are surfaced without stopping races.
+    if(data.cooldown){
+     for(const item of batch)if(!ui.federalPortraits[federalPhotoKey(item)])ui.federalPhotoRequested.delete(federalPhotoKey(item));
+     break;
+    }
+   }catch(error){
+    for(const item of batch)ui.federalPhotoRequested.delete(federalPhotoKey(item));
+    ui.federalPhotoStats.lastError=error.message;
+    console.warn('Federal photos unavailable:',error.message);
+    break;
+   }
+  }
+ }finally{
+  ui.federalPhotoBusy=false;
+  if(ui.federalPhotoRescan){ui.federalPhotoRescan=false;setTimeout(()=>enrichFederalPortraits(),0)}
+ }
+}
 function rowHas(r){return !!r?.reported && Number(r.votes)>0}
 function reportingCount(rows){return rows.filter(rowHas).length}
 function latestStamp(){return ui.updated?`Refreshed ${relTime(ui.updated)}`:'No successful refresh'}
@@ -74,7 +146,7 @@ function overview(){const ballot=getBallot(),house=getNational('house'),senate=g
  <section class="panel panel-pad"><div class="panel-header"><div><div class="panel-title">Coverage and transparency</div><div class="panel-caption">What the dashboard can substantiate</div></div><button class="panel-link" data-view="sources">ALL SOURCES ↗</button></div><p class="page-description" style="font-size:12px">Official California and LA County results are displayed by jurisdiction. Nationwide data depends on third-party aggregation of state-office feeds and may have missing states or districts.</p><div class="stats-line"><span class="data-tag source-ca">STATEWIDE</span><span>California SOS totals</span></div><div class="stats-line"><span class="data-tag source-la">LA COUNTY</span><span>Local election results</span></div><div class="stats-line"><span class="data-tag">PARTIAL NATIONAL COVERAGE</span></div><div class="under-note">No winners or forecasts are inferred from a vote lead.</div></section></div>`;
 }
 function raceRow(r,key,number){const expanded=ui.expanded.has(key),list=r.candidates||[];
- const portraits=list.filter(c=>!!ui.portraits[String(c.name||'').toUpperCase().replace(/[^A-Z0-9]/g,'')]).slice(0,2);
+ const portraits=list.filter(c=>!!(c.enrichedPortrait?.image||ui.portraits[String(c.name||'').toUpperCase().replace(/[^A-Z0-9]/g,'')]?.image)).slice(0,2);
  return `<div class="race-row ${expanded?'expanded':''}" data-race="${html(key)}"><div class="race-summary" data-action="expand" data-value="${html(key)}" role="button" tabindex="0" aria-expanded="${expanded}"><div class="race-id">${number||'◈'}</div><div class="race-main"><div class="race-title">${html(r.title)}</div><div class="race-sub">${r.scope?html(r.scope)+' · ':''}${list.length?html(list.map(x=>`${x.name}${x.party?' ('+x.party+')':''}`).join(' / ')):'Candidate roster not yet available'}</div></div><div class="race-right">${portraits.length?`<div class="race-preview-portraits" aria-label="Available candidate portraits">${portraits.map(c=>candidatePortrait(c)).join('')}</div>`:''}<span class="race-meta">${badgeStatus(r)}</span><span class="race-chevron">›</span></div></div><div class="race-detail"><div class="candidate-list">${list.length?list.map(c=>`<div class="candidate-item"><div class="candidate-caption"><div class="candidate-left">${candidatePortrait(c)}<span class="party-chip ${partyClass(c)}">${html(candidateShort(c))}</span><span class="candidate-identity"><strong class="candidate-name">${html(c.name)}</strong>${r.id==='LA-MAYOR'?`<small class="candidate-party">Nonpartisan ballot · Democratic affiliation</small>`:c.party?`<small class="candidate-party">${html(c.party)}</small>`:''}</span></div><span class="candidate-votes">${rowHas(r)?`${fmt(c.votes)} · ${(c.percent||0).toFixed(1)}%`:'Not reported'}</span></div><div class="bar"><span class="${partyClass(c)}" style="width:${rowHas(r)?(c.percent||0):0}%"></span></div></div>`).join(''):'<p class="detail-empty">Candidate and vote details have not been published in the accessible feed. No figures are inferred.</p>'}</div><div class="detail-meta"><span>${r.pctIn?`${r.pctIn.toFixed(1)}% reporting (provider units)`:'Precinct reporting not available'}</span><span>Source: ${html(r.source||'Not connected')}</span>${r.candidateSource?`<span>Names: ${html(r.candidateSource)}</span>`:''}${r.updatedAt?`<span>As of ${html(relTime(r.updatedAt))}</span>`:''}${r.sourceUrl?`<a target="_blank" rel="noopener noreferrer" href="${html(r.sourceUrl)}">Verify official/source results ↗</a>`:''}</div></div></div>`;
 }
 function groupLabel(title){return `<div class="section-group"><strong>${html(title)}</strong></div>`}
@@ -127,20 +199,20 @@ function candidatePortraitCoverage(){
   for(const c of r?.candidates||[]){
    const name=String(c.name||'').trim();
    if(!name||/^(?:YES|NO|Candidate #)/i.test(name))continue;
-   listed.set(name.toUpperCase().replace(/[^A-Z0-9]/g,''),name);
+   const key=name.toUpperCase().replace(/[^A-Z0-9]/g,'');listed.set(key,(listed.get(key)||false)||Boolean(c.enrichedPortrait?.image||ui.portraits[key]?.image));
   }
  }
- const linked=[...listed.keys()].filter(key=>Boolean(ui.portraits[key])).length;
+ const linked=[...listed.values()].filter(Boolean).length;
  return {listed:listed.size,linked,missing:Math.max(0,listed.size-linked)};
 }
 function sourcesView(){const sources=[{name:'Los Angeles County Registrar',description:'November 3 official county feed: the 54-item local contests, city of Los Angeles mayor, all LA County judge races and county measures.',url:serverURLs.la,group:'Official',status:state.sources.find(x=>x.name==='Los Angeles County')},{name:'California Secretary of State',description:'Official statewide/districtwide returns from 2026 C/R/V election-night files, covering the 80 Assembly, 20 Senate, statewide candidates and 14 propositions.',url:'https://media.sos.ca.gov/',group:'Official',status:state.sources.find(x=>x.name==='California SOS')},{name:'Open America',description:'Public national feed of reported U.S. House and Senate results from 22 state election-office adapters. It provides reported counts but does not call winners.',url:serverURLs.national,group:'National',status:state.nationalMeta.house?.sources?.[0]},{name:'watch.vote',description:'Additional national public API with reported vote data and attributable source references. Data may change and coverage is not guaranteed.',url:serverURLs.watch,group:'National',status:state.nationalMeta.house?.sources?.[1]}];
  const pc=candidatePortraitCoverage();
- return elHead('DATA PROVENANCE','Source transparency','Where every number comes from, how often data is refreshed, and what cannot be inferred from unofficial election-night returns.',demoButton())+demoNotice()+`<div class="panel panel-pad" style="margin-bottom:20px"><div class="panel-title">Candidate portrait coverage</div><div class="page-description">${pc.linked} candidates with verified photo links / ${pc.listed} distinct candidates currently in the loaded lists. ${pc.missing} do not have an identified photo yet.</div><div class="under-note">Images observed loading this browser session: ${ui.imageLoaded.size} successful, ${ui.imageFailed.size} failed. Unvisited/lazy-loaded portraits have not been tested.</div><div class="under-note">Candidate portraits are independently sourced from official government publications or credited Commons files. A linked image may still fail to load if its source restricts access, in which case initials remain visible. This count is metadata coverage, not a guarantee that every photo URL responds.</div></div><div class="notice-band">This viewer does <strong>not</strong> conduct projections or independently call elections. Even if a candidate has 100% of currently reported votes, that does not establish an official victory. California certifies results after the canvass.</div>${sources.map(s=>`<article class="source-card"><div><div class="eyebrow">${s.group.toUpperCase()} SOURCE</div><h3>${html(s.name)}</h3><p>${html(s.description)}</p><a class="source-anchor" href="${s.url}" target="_blank" rel="noopener noreferrer">Open provider documentation/results ↗</a></div><span class="source-pill ${s.status?.ok?'up':'down'}">${s.status? (s.status.ok?'● FEED REACHABLE':'● UNAVAILABLE'):'● NOT CHECKED'}</span></article>`).join('')}<div class="panel panel-pad" style="margin-top:20px"><div class="panel-title">Live diagnostics</div><div class="page-description">Last refresh: ${html(latestStamp())}</div><div class="under-note">Each provider is independently fetched and cached on the Node server for 60 seconds. An unavailable feed does not affect your ability to browse the lists of scheduled contests.</div><div class="under-note">LA County results may be shown for statewide contests only as a prominently labeled county subtotal if California's statewide feed is inaccessible.</div><div class="under-note">National results data cannot currently guarantee a complete election-night feed for all 435 districts. Missing source coverage is explicitly labeled in the national explorer.</div></div>`;
+ return elHead('DATA PROVENANCE','Source transparency','Where every number comes from, how often data is refreshed, and what cannot be inferred from unofficial election-night returns.',demoButton())+demoNotice()+`<div class="panel panel-pad" style="margin-bottom:20px"><div class="panel-title">Candidate portrait coverage</div><div class="page-description">${pc.linked} candidates with verified photo links / ${pc.listed} distinct candidates currently in the loaded lists. ${pc.missing} do not have an identified photo yet.</div><div class="under-note">Images observed loading this browser session: ${ui.imageLoaded.size} successful, ${ui.imageFailed.size} failed. Federal provider lookup attempted: ${ui.federalPhotoStats.requested}, returned verified photo links: ${ui.federalPhotoStats.matched}. ${ui.federalPhotoStats.lastError?'Latest enrichment error: '+html(ui.federalPhotoStats.lastError):''} Unvisited/lazy-loaded portraits have not been tested.</div><div class="under-note">Candidate portraits are independently sourced from official government publications or credited Commons files. A linked image may still fail to load if its source restricts access, in which case initials remain visible. This count is metadata coverage, not a guarantee that every photo URL responds.</div></div><div class="notice-band">This viewer does <strong>not</strong> conduct projections or independently call elections. Even if a candidate has 100% of currently reported votes, that does not establish an official victory. California certifies results after the canvass.</div>${sources.map(s=>`<article class="source-card"><div><div class="eyebrow">${s.group.toUpperCase()} SOURCE</div><h3>${html(s.name)}</h3><p>${html(s.description)}</p><a class="source-anchor" href="${s.url}" target="_blank" rel="noopener noreferrer">Open provider documentation/results ↗</a></div><span class="source-pill ${s.status?.ok?'up':'down'}">${s.status? (s.status.ok?'● FEED REACHABLE':'● UNAVAILABLE'):'● NOT CHECKED'}</span></article>`).join('')}<div class="panel panel-pad" style="margin-top:20px"><div class="panel-title">Live diagnostics</div><div class="page-description">Last refresh: ${html(latestStamp())}</div><div class="under-note">Each provider is independently fetched and cached on the Node server for 60 seconds. An unavailable feed does not affect your ability to browse the lists of scheduled contests.</div><div class="under-note">LA County results may be shown for statewide contests only as a prominently labeled county subtotal if California's statewide feed is inaccessible.</div><div class="under-note">National results data cannot currently guarantee a complete election-night feed for all 435 districts. Missing source coverage is explicitly labeled in the national explorer.</div></div>`;
 }
 function render(){updateTopChrome();const root=byId('page-content');root.innerHTML=({overview,ballot:ballotView,mayor:mayorView,california:californiaView,national:nationalView,map:mapView,sources:sourcesView}[ui.view]||overview)();document.title=`${({overview:'Overview',ballot:'My Ballot',mayor:'LA Mayor',california:'California',national:'Federal Results',map:'U.S. Map',sources:'Sources'})[ui.view]} · Election Atlas ’26`;}
 function downloadCSV(){const data=getBallot();const columns=['Ballot #','Contest','Scope','Candidate or selection','Votes','Percent','Reporting','Source','Updated'];const rows=[columns];for(const r of data){for(const c of r.candidates?.length?r.candidates:[{name:'Unavailable',votes:0,percent:null}])rows.push([r.id,r.title,r.scope,c.name,rowHas(r)?c.votes:'',rowHas(r)?(c.percent||0).toFixed(2):'',r.reported?'Reported':'Awaiting',r.source,r.updatedAt||''])}const csv=rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');const link=document.createElement('a');link.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));link.download=`azusa-54-results-${new Date().toISOString().slice(0,10)}${ui.demo?'-DEMO':''}.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1500)}
-function setView(view){ui.view=view;ui.page=1;ui.expanded.clear();byId('side-nav').closest('.sidebar').classList.remove('open');render();window.scrollTo({top:0,behavior:'instant'});}
-function handleAction(action,value){if(action==='expand'){ui.expanded.has(value)?ui.expanded.delete(value):ui.expanded.add(value);render()}else if(action==='ballot-tab'){ui.ballotTab=value;render()}else if(action==='ca-tab'){ui.caTab=value;ui.page=1;render()}else if(action==='national-tab'){ui.nationalTab=value;ui.nationalState='all';ui.page=1;render()}else if(action==='map-state'){ui.selectedState=value;render()}else if(action==='state-drill'){ui.nationalState=ui.selectedState;ui.nationalTab='house';setView('national')}else if(action==='page-prev'){ui.page--;render()}else if(action==='page-next'){ui.page++;render()}else if(action==='export'){downloadCSV()}}
+function setView(view){ui.view=view;ui.page=1;ui.expanded.clear();byId('side-nav').closest('.sidebar').classList.remove('open');render();if(view==='national')enrichFederalPortraits();window.scrollTo({top:0,behavior:'instant'});}
+function handleAction(action,value){if(action==='expand'){ui.expanded.has(value)?ui.expanded.delete(value):ui.expanded.add(value);render()}else if(action==='ballot-tab'){ui.ballotTab=value;render()}else if(action==='ca-tab'){ui.caTab=value;ui.page=1;render()}else if(action==='national-tab'){ui.nationalTab=value;ui.nationalState='all';ui.page=1;render();enrichFederalPortraits()}else if(action==='map-state'){ui.selectedState=value;render()}else if(action==='state-drill'){ui.nationalState=ui.selectedState;ui.nationalTab='house';setView('national')}else if(action==='page-prev'){ui.page--;render()}else if(action==='page-next'){ui.page++;render()}else if(action==='export'){downloadCSV()}}
 function enableEvents(){
  document.body.addEventListener('click',e=>{const view=e.target.closest('[data-view]');if(view){setView(view.dataset.view);return}const action=e.target.closest('[data-action]');if(action){handleAction(action.dataset.action,action.dataset.value);return}});
  document.body.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const el=e.target.closest('[data-action="map-state"],[data-action="expand"]');if(el){e.preventDefault();handleAction(el.dataset.action,el.dataset.value)}}});
@@ -149,7 +221,7 @@ function enableEvents(){
  byId('refresh-button').addEventListener('click',()=>loadAll(true));
  byId('theme-button').addEventListener('click',()=>{ui.theme=ui.theme==='dark'?'light':'dark';document.body.dataset.theme=ui.theme;localStorage.setItem('atlasThemeV2',ui.theme)});
  byId('mobile-menu').addEventListener('click',()=>$('.sidebar').classList.toggle('open'));
- document.body.addEventListener('change',e=>{if(e.target.id==='national-state'){ui.nationalState=e.target.value;ui.page=1;render()}if(e.target.id==='only-reporting'){ui.onlyReporting=e.target.checked;ui.page=1;render()}if(e.target.id==='demo-switch'){ui.demo=e.target.checked;ui.page=1;ui.expanded.clear();render()}});
+ document.body.addEventListener('change',e=>{if(e.target.id==='national-state'){ui.nationalState=e.target.value;ui.page=1;render();enrichFederalPortraits()}if(e.target.id==='only-reporting'){ui.onlyReporting=e.target.checked;ui.page=1;render()}if(e.target.id==='demo-switch'){ui.demo=e.target.checked;ui.page=1;ui.expanded.clear();render()}});
 }
 // If an external photo host blocks hotlinking, retry via our same-origin image route.
 // Keep the initials visible if neither source can serve the verified headshot.
@@ -174,7 +246,7 @@ async function loadAll(force=false){if(refreshPromise)return refreshPromise;byId
  if(results[1].status==='fulfilled')state.ca=results[1].value.races||state.ca;else errors.push(results[1].reason?.message||'CA data unavailable');
  for(let i=2;i<=3;i++){const office=i===2?'house':'senate';if(results[i].status==='fulfilled'){const r=results[i].value;state[office]=r.races||state[office];state.nationalMeta[office]={coverage:r.coverage,sources:r.sources||[]}}else errors.push(results[i].reason?.message||`National ${office} unavailable`)}
  if(state.ballot.length===0){try{state.ballot=await asJson('/ballot.json')}catch(e){errors.push(e.message)}}
- state.errors=errors;ui.updated=new Date().toISOString();ui.loading=false;render();
+ state.errors=errors;ui.updated=new Date().toISOString();ui.loading=false;applyFederalPhotos();render();if(ui.view==='national')enrichFederalPortraits();
  })().finally(()=>{refreshPromise=null;byId('refresh-button').disabled=false;byId('refresh-icon').classList.remove('refreshing')});return refreshPromise;}
 async function init(){try{const map=await asJson('/states.json');state.tiles=map.tiles;state.states=map.names;}catch{state.tiles={};state.states={};}try{state.ballot=await asJson('/ballot.json')}catch{}try{ui.theme=localStorage.getItem('atlasThemeV2')||'light'}catch{}document.body.dataset.theme=ui.theme;enableEvents();render();loadAll();asJson('/api/portraits').then(p=>{ui.portraits=p.portraits||{};render();}).catch(()=>{});asJson('/api/map-topology').then(topology=>{state.mapShapes=parseMapTopology(topology,state.states);if(ui.view==='map')render();}).catch(error=>{state.mapGeoError=error.message;if(ui.view==='map')render();console.warn('Map outlines unavailable:',error);});setInterval(()=>{if(!document.hidden)loadAll()},60000);setInterval(updateTopChrome,30000);}
 init();
