@@ -48,3 +48,14 @@ test('Anonymous response array is never silently assigned by position',()=>{
  assert.equal(matched.recognized,0);
  assert.equal(matched.portraits.size,0);
 });
+
+test('Live watch.vote batch contract supports named portraits plus unavailable entries',()=>{
+ const a={name:'Gil Cisneros',state:'CA',office:'house',district:'31'};
+ const b={name:'Another Candidate',state:'GA',office:'house',district:'04'};
+ const payload={portraits:[{name:'Gil Cisneros',imageUrl:'https://images.congress.gov/gil.jpg',sourceUrl:'https://www.congress.gov/',attribution:'Biographical Directory',license:'Source-provided official portrait'}],unavailable:[{name:'Another Candidate'}]};
+ const found=parseBatchPortraits(payload,[a,b]);
+ assert.equal(found.recognized,2);
+ assert.equal(found.portraits.size,1);
+ assert.equal(found.portraits.get(lookupKey(a)).credit,'Biographical Directory');
+ assert.equal(found.portraits.has(lookupKey(b)),false);
+});
