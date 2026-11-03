@@ -1,0 +1,542 @@
+[
+  {
+    "id": 1,
+    "title": "State Senator, District 22",
+    "category": "Local & judicial contests",
+    "kind": "candidate",
+    "choices": [
+      "Susan Rubio (Democrat, incumbent)",
+      "Mike Netter (Republican)"
+    ]
+  },
+  {
+    "id": 2,
+    "title": "State Assembly, District 48",
+    "category": "Local & judicial contests",
+    "kind": "candidate",
+    "choices": [
+      "Blanca Rubio (Democrat, incumbent)",
+      "Dan T. Tran (Republican)"
+    ]
+  },
+  {
+    "id": 3,
+    "title": "U.S. Representative, District 31",
+    "category": "Local & judicial contests",
+    "kind": "candidate",
+    "choices": [
+      "Gil Cisneros (Democrat, incumbent)",
+      "Eric Ching (Republican)"
+    ]
+  },
+  {
+    "id": 4,
+    "title": "San Gabriel Valley Municipal Water District, Division 5",
+    "category": "Local & judicial contests",
+    "kind": "candidate",
+    "choices": [
+      "Tizoc Cruz-Gonzalez",
+      "Robert Gonzales"
+    ]
+  },
+  {
+    "id": 5,
+    "title": "Los Angeles County Sheriff",
+    "category": "Local & judicial contests",
+    "kind": "candidate",
+    "choices": [
+      "Robert Luna (incumbent)",
+      "Alex Villanueva (former sheriff)"
+    ]
+  },
+  {
+    "id": 6,
+    "title": "Superior Court Judge, Office 64",
+    "category": "Local & judicial contests",
+    "kind": "candidate",
+    "choices": [
+      "Rhonda A. Haymon (deputy public defender)",
+      "Maria Ghobadi (deputy district attorney)"
+    ]
+  },
+  {
+    "id": 7,
+    "title": "Superior Court Judge, Office 65",
+    "category": "Local & judicial contests",
+    "kind": "candidate",
+    "choices": [
+      "Justin Allen Clayton (deputy public defender)",
+      "Anna Slotky Reitano (deputy county counsel)"
+    ]
+  },
+  {
+    "id": 8,
+    "title": "Superior Court Judge, Office 87",
+    "category": "Local & judicial contests",
+    "kind": "candidate",
+    "choices": [
+      "David DeJute (law professor and attorney)",
+      "Anthony A.J. Bayne (deputy public defender)"
+    ]
+  },
+  {
+    "id": 9,
+    "title": "Superior Court Judge, Office 131",
+    "category": "Local & judicial contests",
+    "kind": "candidate",
+    "choices": [
+      "David Ross (deputy alternate public defender)",
+      "Donna Tryfman (deputy public defender)"
+    ]
+  },
+  {
+    "id": 10,
+    "title": "Los Angeles County Measure A",
+    "category": "Local & judicial contests",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 11,
+    "title": "Los Angeles County Measure E",
+    "category": "Local & judicial contests",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 12,
+    "title": "Governor",
+    "category": "Statewide offices",
+    "kind": "candidate",
+    "choices": [
+      "Xavier Becerra (Democrat)",
+      "Steve Hilton (Republican)"
+    ]
+  },
+  {
+    "id": 13,
+    "title": "Lieutenant Governor",
+    "category": "Statewide offices",
+    "kind": "candidate",
+    "choices": [
+      "Fiona Ma (Democrat)",
+      "Gloria Romero (Republican)"
+    ]
+  },
+  {
+    "id": 14,
+    "title": "Secretary of State",
+    "category": "Statewide offices",
+    "kind": "candidate",
+    "choices": [
+      "Shirley N. Weber (Democrat, incumbent)",
+      "Don Wagner (Republican)"
+    ]
+  },
+  {
+    "id": 15,
+    "title": "Controller",
+    "category": "Statewide offices",
+    "kind": "candidate",
+    "choices": [
+      "Malia M. Cohen (Democrat, incumbent)",
+      "Herb W. Morgan (Republican)"
+    ]
+  },
+  {
+    "id": 16,
+    "title": "Treasurer",
+    "category": "Statewide offices",
+    "kind": "candidate",
+    "choices": [
+      "Eleni Kounalakis (Democrat)",
+      "Jennifer Hawks (Republican)"
+    ]
+  },
+  {
+    "id": 17,
+    "title": "Attorney General",
+    "category": "Statewide offices",
+    "kind": "candidate",
+    "choices": [
+      "Rob Bonta (Democrat, incumbent)",
+      "Michael E. Gates (Republican)"
+    ]
+  },
+  {
+    "id": 18,
+    "title": "Insurance Commissioner",
+    "category": "Statewide offices",
+    "kind": "candidate",
+    "choices": [
+      "Ben Allen (Democrat)",
+      "Jane Kim (Democrat)"
+    ]
+  },
+  {
+    "id": 19,
+    "title": "State Board of Equalization, District 3",
+    "category": "Statewide offices",
+    "kind": "candidate",
+    "choices": [
+      "Mike Gipson (Democrat)",
+      "Samuel P. Sukaton (Democrat)"
+    ]
+  },
+  {
+    "id": 20,
+    "title": "Superintendent of Public Instruction",
+    "category": "Statewide offices",
+    "kind": "candidate",
+    "choices": [
+      "Richard Barrera (nonpartisan ballot)",
+      "Sonja Shaw (nonpartisan ballot)"
+    ]
+  },
+  {
+    "id": 21,
+    "title": "State Proposition 1: Affordable housing bonds",
+    "category": "California propositions",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 22,
+    "title": "State Proposition 2: Rainy Day Fund",
+    "category": "California propositions",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 23,
+    "title": "State Proposition 3: Permanent high-income tax",
+    "category": "California propositions",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 24,
+    "title": "State Proposition 4: Public financing of campaigns",
+    "category": "California propositions",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 25,
+    "title": "State Proposition 5: Recall election procedure",
+    "category": "California propositions",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 26,
+    "title": "State Proposition 37: Middle-income homebuyer loan bonds",
+    "category": "California propositions",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 27,
+    "title": "State Proposition 38: Immunology research borrowing",
+    "category": "California propositions",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 28,
+    "title": "State Proposition 39: Government-issued voter identification",
+    "category": "California propositions",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 29,
+    "title": "State Proposition 40: One-time billionaire wealth tax",
+    "category": "California propositions",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 30,
+    "title": "State Proposition 41: State spending-limit restrictions and audits",
+    "category": "California propositions",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 31,
+    "title": "State Proposition 42: Ban on new personal-property and certain retroactive taxes",
+    "category": "California propositions",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 32,
+    "title": "State Proposition 43: Supermajority local tax rule",
+    "category": "California propositions",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 33,
+    "title": "State Proposition 44: Nonprofit clinic spending allocation",
+    "category": "California propositions",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 34,
+    "title": "State Proposition 45: Environmental review streamlining",
+    "category": "California propositions",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 35,
+    "title": "Supreme Court Associate Justice - Joshua P. Groban",
+    "category": "Judicial retention",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 36,
+    "title": "Supreme Court Associate Justice - Kelli M. Evans",
+    "category": "Judicial retention",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 37,
+    "title": "Court Of Appeal Div. 3 Presiding Justice - Rashida A. Adams",
+    "category": "Judicial retention",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 38,
+    "title": "Court Of Appeal Div. 4 Presiding Justice - Helen Zukin",
+    "category": "Judicial retention",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 39,
+    "title": "Court Of Appeal Div. 5 Presiding Justice - Brian M. Hoffstadt",
+    "category": "Judicial retention",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 40,
+    "title": "Court Of Appeal Div. 6 Presiding Justice - Tari L. Cody",
+    "category": "Judicial retention",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 41,
+    "title": "Court Of Appeal Div. 7 Presiding Justice - Gonzalo C. Martinez",
+    "category": "Judicial retention",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 42,
+    "title": "Court Of Appeal Div. 1 Associate Justice - Michelle C. Kim",
+    "category": "Judicial retention",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 43,
+    "title": "Court Of Appeal Div. 1 Associate Justice - Gregory J. Weingart",
+    "category": "Judicial retention",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 44,
+    "title": "Court Of Appeal Div. 2 Associate Justice - Anne Richardson",
+    "category": "Judicial retention",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 45,
+    "title": "Court Of Appeal Div. 2 Associate Justice - Steve Goorvitch",
+    "category": "Judicial retention",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 46,
+    "title": "Court Of Appeal Div. 3 Associate Justice - Mark Hanasono",
+    "category": "Judicial retention",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 47,
+    "title": "Court Of Appeal Div. 4 Associate Justice - Nicholas Daum",
+    "category": "Judicial retention",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 48,
+    "title": "Court Of Appeal Div. 4 Associate Justice - Audra M. Mori",
+    "category": "Judicial retention",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 49,
+    "title": "Court Of Appeal Div. 4 Associate Justice - Armen Tamzarian",
+    "category": "Judicial retention",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 50,
+    "title": "Court Of Appeal Div. 6 Associate Justice - Kenneth R. Yegan",
+    "category": "Judicial retention",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 51,
+    "title": "Court Of Appeal Div. 7 Associate Justice - Natalie Stone",
+    "category": "Judicial retention",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 52,
+    "title": "Court Of Appeal Div. 8 Associate Justice - John Wiley",
+    "category": "Judicial retention",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 53,
+    "title": "Court Of Appeal Div. 8 Associate Justice - Matthew A. Scherb",
+    "category": "Judicial retention",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  },
+  {
+    "id": 54,
+    "title": "Court Of Appeal Div. 8 Associate Justice - Victor G. Viramontes",
+    "category": "Judicial retention",
+    "kind": "measure",
+    "choices": [
+      "YES",
+      "NO"
+    ]
+  }
+]

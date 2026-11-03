@@ -1,0 +1,13 @@
+{
+  "name": "election-2026-results-hub",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Personal ballot, California and nationwide 2026 election results dashboard using public result feeds",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": {"node": ">=20"}
+}

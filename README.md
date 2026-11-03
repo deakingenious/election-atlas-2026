@@ -1,0 +1,59 @@
+# Election Atlas — November 3, 2026
+
+A premium, self-hosted election-night dashboard with a **personal 54-item Azusa ballot**, the **Los Angeles mayoral race**, **all California State Assembly (80), State Senate (20 scheduled) and Governor races**, **all 435 U.S. House seats**, **35 scheduled U.S. Senate races**, and a clickable 50-state results cartogram.
+
+## Start (no installation or API keys)
+
+1. Install Node.js 20+ if you do not have it (Node 22 preferred). For convenience, macOS users can launch `START-MAC.command`, and Windows users can launch `START-WINDOWS.bat`.
+2. In a terminal, from this folder, run `npm start` (or `node server.mjs`).
+3. Open **http://localhost:8787** in a browser.
+4. The interface refreshes on a 60-second cycle. Click **Refresh** for an immediate re-render (provider responses are cached for 60 seconds).
+
+On macOS Terminal:
+```sh
+cd /path/to/Election_2026_Live_Dashboard
+npm start
+```
+
+Optional: `HOST=0.0.0.0 PORT=8787 npm start` to listen on a network interface. Only do so behind a properly configured reverse proxy if exposing beyond your trusted network. In production, deploy the folder to Render / Railway / Fly.io as a Node web service running `npm start`, use HTTPS, set `HOST=0.0.0.0`, and choose the host's supplied `PORT` environment variable.
+
+## Providers and data scope
+
+- **LA County Registrar**: [official November 3 JSON feed](https://results.lavote.gov/electionresults/json?electionid=4348). Countywide local races, Superior Court judges, county measures and city of LA Mayor. State and federal results in this LA source are *Los Angeles County only*.
+- **California Secretary of State**: official [R26GG](https://media.sos.ca.gov/media/R26GG.txt) (contest names), [C26GG](https://media.sos.ca.gov/media/C26GG.txt) (candidates) and [V26GG](https://media.sos.ca.gov/media/V26GG.txt) (reported votes), as defined in the [official feed documentation](https://cms.cdn.sos.ca.gov/media/2-ascii-file-format-v19.pdf). County code **59** represents California statewide / districtwide totals. This is what powers all California legislative and governor results as well as California races on the personal ballot.
+- **Open America**: [documented public 2026 federal results feed](https://openamerica.io/elections/api/), receiving vote counts directly from election-office data for **22 states**. Crucially: **does not call winners**, and missing seats must not be mistaken for zero votes.
+- **watch.vote**: [2026 elections results API](https://watch.vote/docs/api-reference/elections); secondary national enrichment source. The live response schema may change; no source results are fabricated.
+
+**Important:** no free source checked in advance guarantees complete live coverage of every federal district nationwide. The app always lists all 435 House seats and all 35 Senate contests, marks unavailable source coverage explicitly, and shows only actual provider counts. If a feed is inaccessible or returns a format that the parser does not recognize, the interface remains usable but marks coverage as unavailable. This is not a claim of complete nationwide election-night data.
+
+Results are scheduled to become available after California polls close at **8 p.m. PST, November 3, 2026**, and later reporting may take days or weeks. The LA feed is published in advance with zeroes; the app treats zero-vote entries as **not yet reported**.
+
+### Race status semantics
+
+- **Awaiting results**: no counted votes observed.
+- **Leading**: a candidate has the most votes *so far*, **not a called winner**.
+- **Called**: only when a source explicitly reports a race call (never inferred by this app).
+- **Official source scope** is printed on each race; do not treat LA County subtotals as statewide results.
+- **Demo preview** (optional switch) is clearly labeled with simulated values; cannot overwrite live data.
+
+## Source/coverage diagnostics
+
+- `GET /api/health`
+- `GET /api/ballot` — all 54 personal items plus LA Mayor and the source timestamps
+- `GET /api/california` — 101 California governor, Senate and Assembly contests (includes placeholders for races without data)
+- `GET /api/national?office=house` — 435 rows
+- `GET /api/national?office=senate` — 35 rows
+
+## Development / tests
+
+Run `npm test`. The tests verify California SOS C/R/V parsing, LA County JSON parsing, 54-item ballot resolution, CA and national skeleton counts, and correct pre-results handling.
+
+No npm packages are required, no tracking or analytics, and no ballot selections or user addresses are transmitted. The app contains the 54 **contest titles**, not the user's address, voter ID, selections or political profile.
+
+## Limitations
+
+1. Data provider sites occasionally change URL, schema, CORS or access limits. This app uses a local Node data proxy and surfaces source failures. The server must have outbound HTTPS access.
+2. The federal results board uses provider coverage, which may be partial; rows without verified returns are plainly shown as missing.
+3. California legislative lists cover the scheduled 20 even-numbered Senate seats and 80 Assembly seats, and do not assume unscheduled special elections.
+4. State tiles are an interactive **cartogram, not a boundary-accurate map**. Their color reflects leading parties in available reported House district counts, not statewide party preference, seat calls, or certification.
+5. App was assembled before polls closed. We could test parsing on published pre-election feeds but **could not verify the post-8:00 p.m. feed schema or returns in advance**.

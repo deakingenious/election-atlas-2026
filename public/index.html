@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="color-scheme" content="dark light"/>
+<meta name="description" content="2026 election results dashboard: my Azusa ballot, Los Angeles Mayor, all California legislative races, US House and Senate and national map."/>
+<title>Election Atlas '26 | Live Results</title>
+<link rel="stylesheet" href="/styles.css"/>
+<link rel="icon" href="/logo.svg" type="image/svg+xml"/>
+</head>
+<body data-theme="dark">
+<div id="app" class="app-shell">
+ <aside class="sidebar" aria-label="Primary navigation">
+  <div class="brand">
+   <div class="brand-emblem" aria-hidden="true"><span>✦</span></div>
+   <div class="brand-name">ELECTION<span>ATLAS</span><small>2026 RESULTS DESK</small></div>
+  </div>
+  <div class="side-section">EXPLORE</div>
+  <nav class="side-nav" id="side-nav">
+   <button class="nav-item active" type="button" data-view="overview"><span class="nav-ico">▦</span><span>Overview</span></button>
+   <button class="nav-item" type="button" data-view="ballot"><span class="nav-ico">☷</span><span>My 54-item ballot</span><span class="nav-number">54</span></button>
+   <button class="nav-item" type="button" data-view="mayor"><span class="nav-ico">⌂</span><span>Los Angeles Mayor</span></button>
+   <button class="nav-item" type="button" data-view="california"><span class="nav-ico">◈</span><span>California races</span></button>
+   <button class="nav-item" type="button" data-view="national"><span class="nav-ico">▤</span><span>House & Senate</span></button>
+   <button class="nav-item" type="button" data-view="map"><span class="nav-ico">⬡</span><span>U.S. results map</span></button>
+  </nav>
+  <div class="side-section spacer-top">WORKSPACE</div>
+  <nav class="side-nav">
+   <button class="nav-item" type="button" data-view="sources"><span class="nav-ico">↗</span><span>Data sources</span></button>
+  </nav>
+  <div class="sidebar-bottom">
+   <div class="side-live"><span class="live-pulse" id="side-pulse"></span><span id="sidebar-feed-status">Waiting for sources</span></div>
+   <p>Independent results viewer.<br/>Not an election authority.</p>
+   <div class="side-date">NOV 03 · 2026</div>
+  </div>
+ </aside>
+ <div class="workspace">
+  <header class="topbar">
+   <button type="button" class="mobile-menu icon-button" id="mobile-menu" aria-label="Toggle navigation">☰</button>
+   <div class="breadcrumb"><span>UNITED STATES</span><span class="crumb-divider">/</span><strong id="view-breadcrumb">OVERVIEW</strong></div>
+   <div class="top-actions">
+    <label class="global-search"><span>⌕</span><input id="search-input" placeholder="Search contests or candidates" autocomplete="off" aria-label="Search contests and candidates"/><kbd>/</kbd></label>
+    <div class="top-status" id="top-status"><span class="pulse-dot"></span> PRE-ELECTION</div>
+    <button class="icon-button" type="button" id="theme-button" title="Toggle light/dark theme" aria-label="Toggle theme">☼</button>
+    <button class="refresh-button" type="button" id="refresh-button"><span id="refresh-icon">↻</span><span>Refresh</span></button>
+   </div>
+  </header>
+  <div class="ticker" id="ticker"><span class="ticker-pill">ELECTION NIGHT</span><span id="ticker-copy">California results begin after polls close at 8:00 p.m. PST. National results arrive as states report.</span><span class="ticker-end" id="ticker-time">NOV 3, 2026</span></div>
+  <main class="main-content" id="page-content" tabindex="-1"><div class="load-screen"><span class="loading-orbit"></span><div>Connecting to election sources...</div></div></main>
+  <footer class="footer"><span>© 2026 Election Atlas · Unofficial reported returns</span><span id="footer-updated">No updates yet</span></footer>
+ </div>
+</div>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

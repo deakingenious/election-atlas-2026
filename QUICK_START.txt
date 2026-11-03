@@ -1,0 +1,23 @@
+ELECTION ATLAS '26 — LIVE RESULTS
+=================================
+
+1) Extract the ZIP into a folder.
+2) You need Node.js 20 or later installed: https://nodejs.org/
+3) On Mac: double-click START-MAC.command. If macOS blocks it, use Terminal:
+     cd /path/to/Election_2026_Live_Dashboard
+     npm start
+   On Windows: double-click START-WINDOWS.bat, or run npm start in Command Prompt.
+4) Open http://localhost:8787 in Chrome, Firefox, Edge, or Safari.
+
+The dashboard refreshes its data every 60 seconds and needs an internet connection.
+No API key, package installation, sign-in or paid subscription required.
+
+DATA COVERAGE
+- Your exact 54-item Azusa ballot: California SOS + LA County Registrar feeds.
+- LA Mayor: LA County Registrar.
+- All 80 CA State Assembly, 20 CA Senate and Governor: California SOS.
+- All 435 U.S. House, 35 U.S. Senate: inventory of races with limited live national aggregation.
+- Interactive 50-state map (tile cartogram), based on available U.S. House district leaders.
+- Source status and per-race scope clearly labeled; missing feeds never presented as zero votes.
+
+See README.md for sources, limitations, deployment, and API routes.
