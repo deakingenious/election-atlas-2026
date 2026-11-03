@@ -27,7 +27,7 @@ test('A Michigan portrait cannot leak to an Alabama Mike Rogers or a House candi
 test('Candidate alias matches only the same state and seat',()=>{
  const alias=one('Michael J. Rogers');
  assert.equal(index.get(lookupKey(alias)).image,index.get(lookupKey(one('Mike Rogers'))).image);
- assert.equal(index.get(lookupKey(one('Michael J. Rogers','AL')),undefined);
+ assert.equal(index.get(lookupKey(one('Michael J. Rogers','AL'))),undefined);
 });
 
 test('Reviewed catalog rejects untrusted photo hosts and conflicting identities',()=>{
