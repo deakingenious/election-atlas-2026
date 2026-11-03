@@ -75,6 +75,11 @@ const server=http.createServer(async(req,res)=>{
  const url=new URL(req.url,`http://${req.headers.host||'localhost'}`);
  try {
   if(url.pathname==='/api/health')return json(res,{ok:true,time:new Date().toISOString(),status:Date.now()<ELECTION_RESULTS_BEGIN.getTime()?'Pre-results — California polls open until 8 p.m. Pacific':'Results period',stats});
+  if(url.pathname==='/api/map-topology'){
+   // Census-derived boundaries bundled with the us-atlas npm package.
+   const topology=JSON.parse(await readFile(path.join(root,'node_modules','us-atlas','states-albers-10m.json'),'utf8'));
+   return json(res,topology);
+  }
   if(url.pathname==='/api/ballot')return json(res,await personal());
   if(url.pathname==='/api/california')return json(res,await california());
   if(url.pathname==='/api/national'){
