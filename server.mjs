@@ -12,7 +12,7 @@ const stored=new Map();
 const ballot=JSON.parse(await readFile(path.join(root,'public','ballot.json'),'utf8'));
 const stats={requests:0,sourceCalls:0,sourceFailures:0};
 const portraitPages=JSON.parse(await readFile(path.join(root,'public','portrait-pages.json'),'utf8'));
-let portraitCache=null;
+
 async function upstream(url,{asText=false,windows1252=false,ttl=TTL}={}){
  const cached=stored.get(url);if(cached && Date.now()-cached.t<ttl)return cached.value;
  if(cached?.promise)return cached.promise;
@@ -72,28 +72,43 @@ async function national(office){
  const races=mergeNational(a.data,w.data,ca?.data?.races||[],roster.data.races).filter(r=>r.office===office);
  return {date:'2026-11-03',office,lastFetched:new Date().toISOString(),races,reported:races.filter(r=>r.reported).length,coverage:races.filter(r=>r.source!=='Not yet covered').length,sources:[{name:'Open America — official state feeds (22 states)',ok:a.ok,url:LINKS.national,error:a.error},{name:'watch.vote election results',ok:w.ok,url:LINKS.watch,error:w.error},...(ca?[{name:'California Secretary of State',ok:ca.ok,url:LINKS.sos,error:ca.error}]:[]),{name:'Federal general-election candidate roster',ok:roster.ok,url:CANDIDATES_CSV,error:roster.error,contests:roster.data.contests}]};
 }
+// Portraits have an explicitly verified identity and source; do not guess photos
+// from an ambiguous name-based Wikipedia lookup. The photo manifest is checked in.
+const portraitKey=name=>String(name||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+const officialPortraits=Object.fromEntries(Object.entries(portraitPages).map(([name,data])=>[portraitKey(name),data]));
+const imageCache=new Map();
 async function getPortraits(){
- if(portraitCache&&Date.now()-portraitCache.time<24*60*60*1000)return portraitCache.value;
- const titles=[...new Set(Object.values(portraitPages))];
- const endpoint=new URL('https://en.wikipedia.org/w/api.php');
- endpoint.searchParams.set('action','query');endpoint.searchParams.set('format','json');endpoint.searchParams.set('redirects','1');
- endpoint.searchParams.set('prop','pageimages');endpoint.searchParams.set('piprop','thumbnail');endpoint.searchParams.set('pithumbsize','160');
- endpoint.searchParams.set('titles',titles.join('|'));
- const pages={};
- try{
-  const raw=await upstream(endpoint.toString());
-  for(const page of Object.values(raw?.query?.pages||{})){
-   if(page.thumbnail?.source)pages[page.title]=page.thumbnail.source;
-  }
- }catch(e){console.warn('Wikimedia portraits unavailable:',e.message)}
  const portraits={};
- for(const [person,title] of Object.entries(portraitPages)){
-  const thumb=pages[title];
-  if(thumb&&thumb.startsWith('https://upload.wikimedia.org/'))
-   portraits[person.toUpperCase().replace(/[^A-Z0-9]/g,'')]={image:thumb,credit:'Wikimedia Commons via Wikipedia',source:'https://en.wikipedia.org/wiki/'+encodeURIComponent(title.replace(/ /g,'_'))};
+ for(const [key,data] of Object.entries(officialPortraits)){
+  portraits[key]={image:data.image,proxyUrl:'/api/candidate-photo?name='+encodeURIComponent(key),credit:data.credit,source:data.source};
  }
- const value={portraits,source:'Wikimedia Commons / Wikipedia',note:'Only a manually identified list is queried; unavailable images use initials.'};
- portraitCache={time:Date.now(),value};return value;
+ return {portraits,availableCount:Object.keys(portraits).length,source:'Verified government-published photographs',note:'Curated verified matches only; the dashboard uses initials where an identifiable portrait is unavailable.'};
+}
+async function candidatePhoto(name,res){
+ const info=officialPortraits[portraitKey(name)];
+ if(!info)return json(res,{error:'No verified portrait for this candidate'},404);
+ const cached=imageCache.get(info.image);
+ try{
+  let bytes,contentType;
+  if(cached && Date.now()-cached.t<24*60*60*1000){bytes=cached.bytes;contentType=cached.contentType}
+  else{
+   const response=await fetch(info.image,{headers:{'User-Agent':'ElectionAtlas2026/2.0 (election results site; contact via GitHub project)'},signal:AbortSignal.timeout(12000)});
+   if(!response.ok)throw Error('Photo source returned HTTP '+response.status);
+   contentType=(response.headers.get('content-type')||'').split(';')[0].toLowerCase();
+   if(!['image/jpeg','image/png','image/webp'].includes(contentType))throw Error('Unexpected portrait content type');
+   const size=Number(response.headers.get('content-length')||0);
+   if(size>8*1024*1024)throw Error('Portrait too large');
+   const buffer=await response.arrayBuffer();
+   if(buffer.byteLength>8*1024*1024)throw Error('Portrait too large');
+   bytes=Buffer.from(buffer);
+   imageCache.set(info.image,{bytes,contentType,t:Date.now()});
+  }
+  res.writeHead(200,{'Content-Type':contentType,'Cache-Control':'public,max-age=21600','X-Content-Type-Options':'nosniff'});
+  res.end(bytes);
+ }catch(error){
+  console.warn('Verified photo could not be served:',portraitKey(name),error.message);
+  return json(res,{error:'Photo source temporarily unavailable'},502);
+ }
 }
 function json(res,body,status=200){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Access-Control-Allow-Origin':'*'});res.end(JSON.stringify(body));}
 const mimes={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon'};
@@ -110,6 +125,7 @@ const server=http.createServer(async(req,res)=>{
  const url=new URL(req.url,`http://${req.headers.host||'localhost'}`);
  try {
   if(url.pathname==='/api/portraits')return json(res,await getPortraits());
+  if(url.pathname==='/api/candidate-photo')return candidatePhoto(url.searchParams.get('name'),res);
   if(url.pathname==='/api/health')return json(res,{ok:true,time:new Date().toISOString(),status:Date.now()<ELECTION_RESULTS_BEGIN.getTime()?'Pre-results — California polls open until 8 p.m. Pacific':'Results period',stats});
   if(url.pathname==='/api/map-topology'){
    // Census-derived boundaries bundled with the us-atlas npm package.
