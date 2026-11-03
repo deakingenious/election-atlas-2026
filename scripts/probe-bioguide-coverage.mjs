@@ -2,7 +2,7 @@ import {CANDIDATES_CSV,parseCSV} from '../lib/candidate-rosters.mjs';
 try{
  const response=await fetch(CANDIDATES_CSV,{signal:AbortSignal.timeout(9500)});
  if(!response.ok)throw Error('Roster HTTP '+response.status);
- const rows=parseCSV(await response.text()),senate=rows.filter(r=>r.OFFICE==='Senate'||r.OFFICE==='S'),house=rows.filter(r=>r.OFFICE==='House'||r.OFFICE==='H');
+ const rows=parseCSV(await response.text()),senate=rows.filter(r=>/SENATE/i.test(r.OFFICE||'')),house=rows.filter(r=>/HOUSE|CONGRESS/i.test(r.OFFICE||''));
  const withBioguide=arr=>arr.filter(x=>/^[A-Z][0-9]{6}$/.test(x.BIOGUIDEID||''));
  const s=withBioguide(senate),h=withBioguide(house);
  console.log('Senate records:',senate.length,'with Bioguide ID:',s.length);
