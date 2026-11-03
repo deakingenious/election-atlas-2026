@@ -98,5 +98,45 @@
     "image": "https://voterguide.sos.ca.gov/img/spi/shaw.jpg",
     "source": "https://voterguide.sos.ca.gov/candidates/superintendent-candidate-statements.htm",
     "credit": "California Secretary of State, 2026 Official Voter Information Guide"
+  },
+  "Xavier Becerra": {
+    "image": "https://oag.ca.gov/sites/all/files/agweb/images/ag/ag-becerra-official.jpg",
+    "source": "https://www.oag.ca.gov/history/33becerra",
+    "credit": "California Department of Justice, official portrait (2017)"
+  },
+  "XAVIER BECERRA": {
+    "image": "https://oag.ca.gov/sites/all/files/agweb/images/ag/ag-becerra-official.jpg",
+    "source": "https://www.oag.ca.gov/history/33becerra",
+    "credit": "California Department of Justice, official portrait (2017)"
+  },
+  "Steve Hilton": {
+    "image": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Steve_Hilton_%2854233445987_crop%29.jpg?width=300",
+    "source": "https://commons.wikimedia.org/wiki/File:Steve_Hilton_(54233445987_crop).jpg",
+    "credit": "Gage Skidmore, CC BY 2.0, photo taken 2024"
+  },
+  "Rob Bonta": {
+    "image": "https://upload.wikimedia.org/wikipedia/commons/2/22/Rob_Bonta_official_portrait_%28cropped%29.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Rob_Bonta_official_portrait_(cropped).jpg",
+    "credit": "California Department of Justice, portrait via Wikimedia Commons"
+  },
+  "Michael E Gates": {
+    "image": "https://voterguide.sos.ca.gov/img/attorney-general/gates.jpg",
+    "source": "https://voterguide.sos.ca.gov/candidates/attorney-general-candidate-statements.htm",
+    "credit": "California Secretary of State, 2026 Official Voter Information Guide"
+  },
+  "Michael Gates": {
+    "image": "https://voterguide.sos.ca.gov/img/attorney-general/gates.jpg",
+    "source": "https://voterguide.sos.ca.gov/candidates/attorney-general-candidate-statements.htm",
+    "credit": "California Secretary of State, 2026 Official Voter Information Guide"
+  },
+  "Ben Allen": {
+    "image": "https://voterguide.sos.ca.gov/img/insurance/allen.jpg",
+    "source": "https://voterguide.sos.ca.gov/candidates/insurance-commissioner-candidate-statements.htm",
+    "credit": "California Secretary of State, 2026 Official Voter Information Guide"
+  },
+  "Jane Kim": {
+    "image": "https://voterguide.sos.ca.gov/img/insurance/kim.jpg",
+    "source": "https://voterguide.sos.ca.gov/candidates/insurance-commissioner-candidate-statements.htm",
+    "credit": "California Secretary of State, 2026 Official Voter Information Guide"
   }
 }
