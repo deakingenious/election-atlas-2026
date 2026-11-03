@@ -38,6 +38,7 @@ function federalPhotoLookup(r,c){
   lookup.district=String(Number(district[1])).padStart(2,'0');
  }
  if(c.candidateId)lookup.candidateId=c.candidateId;
+ if(c.bioguideId)lookup.bioguideId=c.bioguideId;
  return lookup;
 }
 function federalPhotoKey(lookup){
