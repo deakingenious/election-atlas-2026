@@ -154,8 +154,10 @@ async function performPortraitEnrichment(lookups){
   // The documented batch route does not publish a complete example of its JSON
   // result structure. If fields can't be safely matched, fall back to the
   // documented GET contract for a bounded subset; never assign by array index.
-  const unrecognized=pending.filter(x=>!enrichmentCache.has(lookupKey(x)));
-  const sample=unrecognized.slice(0,10);
+  // If the documented batch response already identified candidates, do not
+  // issue individual GETs: the provider can block them (403) even as POST works.
+  const unresolved=(!batch||batch.recognized===0)?pending.filter(x=>!enrichmentCache.has(lookupKey(x))):[];
+  const sample=unresolved.slice(0,10);
   for(let i=0;i<sample.length;i+=5){
    if(Date.now()<portraitCooldownUntil)break;
    await Promise.all(sample.slice(i,i+5).map(async item=>{
