@@ -4,6 +4,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parseLA,parseSOS,resolveBallot,resolveMayor,californiaRaces,normalizeOpenAmerica,normalizeWatch,mergeNational,LINKS,ELECTION_RESULTS_BEGIN} from './lib/adapters.mjs';
 import {CANDIDATES_CSV,normalizeFederalRoster} from './lib/candidate-rosters.mjs';
+import {normalizeLookup,lookupKey,normalizePortrait,parseBatchPortraits,portraitGetUrl} from './lib/portrait-enrichment.mjs';
 const root=path.dirname(fileURLToPath(import.meta.url));
 const HOST=process.env.HOST||'127.0.0.1';
 const PORT=Number(process.env.PORT||8787);
@@ -79,6 +80,115 @@ async function national(office){
 const portraitKey=name=>String(name||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const officialPortraits=Object.fromEntries(Object.entries(portraitPages).map(([name,data])=>[portraitKey(name),data]));
 const imageCache=new Map();
+// The externally verified portrait directory is optional. Failure never touches
+// election-result records, their candidate names, or their vote totals.
+const enrichmentCache=new Map();
+const providerCalls=[];
+let portraitQueue=Promise.resolve();
+let portraitCooldownUntil=0;
+let portraitLastError=null;
+const PHOTO_TTL=24*60*60*1000, MISS_TTL=6*60*60*1000;
+const PROVIDER_WINDOW=10*60*1000, MAX_PROVIDER_CALLS=55;
+function providerSlot(){
+ const now=Date.now();while(providerCalls.length && now-providerCalls[0]>PROVIDER_WINDOW)providerCalls.shift();
+ if(now<portraitCooldownUntil||providerCalls.length>=MAX_PROVIDER_CALLS)return false;
+ providerCalls.push(now);return true;
+}
+function setPortraitCooldown(response){
+ const retry=Number(response.headers.get('retry-after')||0);
+ portraitCooldownUntil=Date.now()+Math.max(60,Math.min(600,Number.isFinite(retry)?retry:60))*1000;
+}
+async function receiveJson(req,limit=50000){
+ let bytes=0,chunks=[];
+ for await(const part of req){
+  bytes+=part.length;
+  if(bytes>limit){const error=new Error('Request body too large');error.status=413;throw error}
+  chunks.push(part);
+ }
+ try{return JSON.parse(Buffer.concat(chunks).toString('utf8'))}
+ catch{const error=new Error('Invalid JSON');error.status=400;throw error}
+}
+async function requestPortraitBatch(lookups){
+ if(!providerSlot())throw Error('Provider is rate limited or cooling down');
+ const response=await fetch('https://watch.vote/api/elections/2026/portraits',{
+  method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','User-Agent':'ElectionAtlas2026/2.0'},
+  body:JSON.stringify({lookups}),signal:AbortSignal.timeout(12500)
+ });
+ if(response.status===429)setPortraitCooldown(response);
+ if(!response.ok)throw Error('watch.vote batch HTTP '+response.status);
+ return parseBatchPortraits(await response.json(),lookups);
+}
+async function requestPortraitOne(lookup){
+ if(!providerSlot())return {tried:false,photo:null};
+ const response=await fetch(portraitGetUrl(lookup),{
+  headers:{'Accept':'application/json','User-Agent':'ElectionAtlas2026/2.0'},signal:AbortSignal.timeout(7500)
+ });
+ if(response.status===429)setPortraitCooldown(response);
+ if(!response.ok)throw Error('watch.vote individual HTTP '+response.status);
+ const json=await response.json();
+ return {tried:true,photo:normalizePortrait(json)};
+}
+function cachedPortraits(lookups){
+ const now=Date.now(), portraits={};let missed=0;
+ for(const item of lookups){
+  const entry=enrichmentCache.get(lookupKey(item));
+  if(!entry||now-entry.time>(entry.photo?PHOTO_TTL:MISS_TTL)){missed++;continue}
+  if(entry.photo)portraits[lookupKey(item)]=entry.photo;
+ }
+ return {portraits,missed};
+}
+async function performPortraitEnrichment(lookups){
+ const now=Date.now(),pending=lookups.filter(x=>{
+  const c=enrichmentCache.get(lookupKey(x));return !c||now-c.time>(c.photo?PHOTO_TTL:MISS_TTL);
+ });
+ let attempted=0,providerError=null;
+ if(pending.length && Date.now()>=portraitCooldownUntil){
+  let batch;
+  try{
+   batch=await requestPortraitBatch(pending);attempted+=pending.length;
+   for(const item of pending){
+    const key=lookupKey(item);
+    if(batch.seen.has(key))enrichmentCache.set(key,{photo:batch.portraits.get(key)||null,time:Date.now()});
+   }
+  }catch(error){providerError=error.message;portraitLastError=providerError}
+  // The documented batch route does not publish a complete example of its JSON
+  // result structure. If fields can't be safely matched, fall back to the
+  // documented GET contract for a bounded subset; never assign by array index.
+  const unrecognized=pending.filter(x=>!enrichmentCache.has(lookupKey(x)));
+  const sample=unrecognized.slice(0,10);
+  for(let i=0;i<sample.length;i+=5){
+   if(Date.now()<portraitCooldownUntil)break;
+   await Promise.all(sample.slice(i,i+5).map(async item=>{
+    try{
+     const result=await requestPortraitOne(item);
+     if(result.tried){
+      enrichmentCache.set(lookupKey(item),{photo:result.photo,time:Date.now()});
+      attempted++;
+     }
+    }catch(error){providerError=error.message;portraitLastError=providerError}
+   }));
+  }
+ }
+ const found=cachedPortraits(lookups);
+ return {portraits:found.portraits,requested:lookups.length,matched:Object.keys(found.portraits).length,
+  pending:found.missed,attempted,providerError,
+  provider:'watch.vote',cooldown:Date.now()<portraitCooldownUntil,
+  note:'Verified external portraits only. Missing photographs do not change election results.'};
+}
+async function enrichPortraitRequest(req,res){
+ let body;
+ try{body=await receiveJson(req)}catch(error){return json(res,{error:error.message},error.status||400)}
+ if(!Array.isArray(body?.lookups)||body.lookups.length<1||body.lookups.length>120)return json(res,{error:'Expected 1 to 120 candidate lookups'},400);
+ const parsed=body.lookups.map(normalizeLookup);
+ if(parsed.some(x=>!x))return json(res,{error:'Invalid candidate lookup'},400);
+ const unique=[...new Map(parsed.map(x=>[lookupKey(x),x])).values()];
+ const job=portraitQueue.then(()=>performPortraitEnrichment(unique));
+ portraitQueue=job.catch(()=>{});
+ try{return json(res,await job)}catch(error){
+  console.warn('Portrait enrichment unavailable:',error.message);
+  return json(res,{portraits:cachedPortraits(unique).portraits,requested:unique.length,matched:0,pending:unique.length,providerError:error.message,provider:'watch.vote'});
+ }
+}
 async function getPortraits(){
  const portraits={};
  for(const [key,data] of Object.entries(officialPortraits)){
@@ -127,6 +237,10 @@ const server=http.createServer(async(req,res)=>{
  const url=new URL(req.url,`http://${req.headers.host||'localhost'}`);
  try {
   if(url.pathname==='/api/portraits')return json(res,await getPortraits());
+  if(url.pathname==='/api/portrait-enrichment'){
+   if(req.method!=='POST')return json(res,{error:'POST required'},405);
+   return enrichPortraitRequest(req,res);
+  }
   if(url.pathname==='/api/candidate-photo')return candidatePhoto(url.searchParams.get('name'),res);
   if(url.pathname==='/api/health')return json(res,{ok:true,time:new Date().toISOString(),status:Date.now()<ELECTION_RESULTS_BEGIN.getTime()?'Pre-results — California polls open until 8 p.m. Pacific':'Results period',stats});
   if(url.pathname==='/api/map-topology'){
