@@ -113,3 +113,7 @@
 [data-theme=light] .race-preview-portraits .candidate-avatar{border-color:#fff}
 [data-theme=dark] .race-preview-portraits .candidate-avatar{border-color:#172944}
 @media(max-width:620px){.race-preview-portraits .candidate-avatar{width:26px;height:26px;flex-basis:26px}.race-preview-portraits{margin-right:0}.race-right{gap:5px}}
+
+/* Source and license display for reviewed candidate images. */
+.candidate-photo-credit{display:block;color:var(--muted);font-size:10px;line-height:1.45;max-width:480px}
+.candidate-photo-credit a{color:var(--mint);font-weight:600;text-decoration:underline;text-underline-offset:2px}

@@ -85,3 +85,28 @@ The public **House & Senate** view now requests additional **verified portrait m
 - The Data Sources view reports attempted federal lookups, matching photo metadata and provider errors. Source/author/license metadata is retained and shown with image title text.
 
 **Known limitation:** watch.vote verifies overrides and currently serving members; many challengers may still have no licensable verified photo. On November 3, a GitHub Actions live probe confirmed the POST batch route accepts `{lookups:[...]}` and returns named `portraits` and `unavailable` records with attribution and licensing. Individual GET requests returned HTTP 403 from the GitHub runner, so normal operation avoids GET fallback when the batch contract succeeds. Internet-dependent portrait coverage must still be checked on Render after merging. The feature does not claim complete coverage of all federal candidates.
+
+## Reviewed Commons fallback for federal candidates
+
+The automated watch.vote portrait directory deliberately leaves many challengers and former members without photos. The dashboard therefore supports a second, *reviewed* source at `public/federal-portrait-overrides.json`: Wikimedia Commons photographs with verified identities, source URLs, author credits, and license terms.
+
+**Candidate matching is seat-specific:** office + state + district (for House) + normalized name. In particular, the 2026 Michigan U.S. Senate candidate Mike Rogers is a former Michigan U.S. representative; Commons also has images of an unrelated former Alabama U.S. representative of the same name. The two must never be conflated. Reviewed Commons photos override missing watch.vote photos; no image lookup is allowed to alter vote counts or contest lists.
+
+Currently documented Michigan Senate examples:
+
+- Abdul El-Sayed: [2025 photo by Kenneth C. Zirkel](https://commons.wikimedia.org/wiki/File:Abdul_El-Sayed.jpg), CC BY-SA 4.0. The app displays author/license attribution.
+- Mike Rogers (Michigan): [official earlier congressional portrait](https://commons.wikimedia.org/wiki/File:Mike-Rogers-Head-Shot-2.jpg), U.S. federal government public domain.
+
+Images may be fetched from Wikimedia or retried through the app's same-origin proxy using only the fixed, reviewed manifest. When an image source fails, the candidate's initials remain visible. Do not copy copyrighted campaign or news images without permission. Further candidate coverage requires verified portrait sources; no name-only automatic image search is used.
+
+
+## Automatic Commons discovery by exact FEC ID
+
+For federal candidates not covered by the verified watch.vote directory or the reviewed override list, Election Atlas can now look up their **FEC candidate ID** (from the source's 2026 federal candidate roster) in **Wikidata property P1839** and read the linked **Wikimedia Commons photo (P18)**. A November 3 live probe confirmed that 1,228 of 1,294 source roster records have FEC IDs, Wikidata's SPARQL endpoint resolves a subset to photos, and Wikimedia Commons' `imageinfo` API returns actual author and license metadata.
+
+- Only a valid ID that agrees with **office + state** is eligible. The Wikidata match must be an exact P1839 ID, never a name-only match. Conflicting Wikidata identities or image files are rejected.
+- Candidate images must come from `thumb.wikimedia.org` or `upload.wikimedia.org`, and Commons metadata must explicitly permit reuse (public domain, CC0, CC BY or CC BY-SA). Noncommercial/no-derivatives/nonfree or unclear images are ignored.
+- Image attribution and source license are linked in expanded candidate details. A same-origin cached image proxy is available for verified FEC-ID images.
+- Photo lookups are optional and separate from all election-result API calls. Candidate rosters, votes and state filters remain accessible if Wikidata, Commons or watch.vote fails. Cache misses briefly, cache photos longer, and cool down after upstream errors.
+
+A valid FEC ID does not guarantee that Wikidata has a matching person with an openly licensed photograph. The app will show initials when the exact matching process returns no usable image. The curated Michigan Senate overrides remain an independent fallback.

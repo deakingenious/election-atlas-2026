@@ -19,6 +19,20 @@ jobs:
       - run: node --check lib/adapters.mjs
       - run: node --check lib/candidate-rosters.mjs
       - run: node --check lib/portrait-enrichment.mjs
+      - run: node --check lib/verified-portraits.mjs
+      - run: node --check lib/wikidata-portraits.mjs
+      - name: Inspect optional FEC candidate IDs for future portrait matching
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: node scripts/probe-federal-candidate-ids.mjs
+      - name: Probe Wikimedia Commons photo license metadata
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: node scripts/probe-commons-metadata.mjs
+      - name: Probe Wikidata FEC ID to Commons portrait availability
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: node scripts/probe-wikidata-fec.mjs
       - name: Probe optional live portrait provider contract
         if: github.event_name == 'pull_request'
         continue-on-error: true
