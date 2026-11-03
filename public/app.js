@@ -60,7 +60,6 @@ async function enrichFederalPortraits(){
   const lookup=federalPhotoLookup(race,candidate),key=federalPhotoKey(lookup);
   if(!lookup||!key||ui.federalPhotoRequested.has(key))continue;
   if(ui.portraits[String(candidate.name||'').toUpperCase().replace(/[^A-Z0-9]/g,'')]?.image)continue;
-  ui.federalPhotoRequested.add(key);
   lookups.push(lookup);
  }
  if(!lookups.length)return;
@@ -69,6 +68,7 @@ async function enrichFederalPortraits(){
   for(let i=0;i<lookups.length;i+=100){
    if(document.hidden)break;
    const batch=lookups.slice(i,i+100);
+   for(const item of batch)ui.federalPhotoRequested.add(federalPhotoKey(item));
    try{
     const response=await fetch('/api/portrait-enrichment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lookups:batch})});
     if(!response.ok)throw Error('Portrait enrichment: HTTP '+response.status);
@@ -82,8 +82,16 @@ async function enrichFederalPortraits(){
     applyFederalPhotos();
     if(ui.view==='national'||ui.view==='sources')render();
     // Rate-limit and upstream errors are surfaced without stopping races.
-    if(data.cooldown)break;
-   }catch(error){ui.federalPhotoStats.lastError=error.message;console.warn('Federal photos unavailable:',error.message);break}
+    if(data.cooldown){
+     for(const item of batch)if(!ui.federalPortraits[federalPhotoKey(item)])ui.federalPhotoRequested.delete(federalPhotoKey(item));
+     break;
+    }
+   }catch(error){
+    for(const item of batch)ui.federalPhotoRequested.delete(federalPhotoKey(item));
+    ui.federalPhotoStats.lastError=error.message;
+    console.warn('Federal photos unavailable:',error.message);
+    break;
+   }
   }
  }finally{
   ui.federalPhotoBusy=false;
