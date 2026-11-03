@@ -1,12 +1,27 @@
 {
-  "Karen Ruth Bass": "Karen Bass",
-  "Nithya Raman": "Nithya Raman",
-  "Xavier Becerra": "Xavier Becerra",
-  "Steve Hilton": "Steve Hilton (political commentator)",
-  "Shirley N. Weber": "Shirley Weber",
-  "Gil Cisneros": "Gil Cisneros",
-  "Fiona Ma": "Fiona Ma",
-  "Susan Rubio": "Susan Rubio",
-  "Blanca Rubio": "Blanca Rubio",
-  "Robert Luna": "Robert Luna (sheriff)"
+  "Karen Ruth Bass": {
+    "image": "https://mayor.lacity.gov/sites/g/files/wph2066/files/2023-05/Mayor%20Karen%20Bass%20-%20Official%20Headshot.jpg",
+    "source": "https://mayor.lacity.gov/about-mayor-karen-bass",
+    "credit": "Office of the Mayor, City of Los Angeles"
+  },
+  "Karen Bass": {
+    "image": "https://mayor.lacity.gov/sites/g/files/wph2066/files/2023-05/Mayor%20Karen%20Bass%20-%20Official%20Headshot.jpg",
+    "source": "https://mayor.lacity.gov/about-mayor-karen-bass",
+    "credit": "Office of the Mayor, City of Los Angeles"
+  },
+  "Nithya Raman": {
+    "image": "https://cd4.lacity.gov/wp-content/uploads/2023/10/A6013-189.jpg",
+    "source": "https://cd4.lacity.gov/press-kit/",
+    "credit": "City of Los Angeles, Council District 4"
+  },
+  "Blanca Rubio": {
+    "image": "https://webapi.assembly.ca.gov/district-media/assets/members/assembly_member_48.jpg",
+    "source": "https://www.assembly.ca.gov/assemblymembers/48",
+    "credit": "California State Assembly"
+  },
+  "Blanca E Rubio": {
+    "image": "https://webapi.assembly.ca.gov/district-media/assets/members/assembly_member_48.jpg",
+    "source": "https://www.assembly.ca.gov/assemblymembers/48",
+    "credit": "California State Assembly"
+  }
 }
