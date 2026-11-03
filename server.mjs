@@ -5,6 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {parseLA,parseSOS,resolveBallot,resolveMayor,californiaRaces,normalizeOpenAmerica,normalizeWatch,mergeNational,LINKS,ELECTION_RESULTS_BEGIN} from './lib/adapters.mjs';
 import {CANDIDATES_CSV,normalizeFederalRoster} from './lib/candidate-rosters.mjs';
 import {normalizeLookup,lookupKey,normalizePortrait,parseBatchPortraits,portraitGetUrl} from './lib/portrait-enrichment.mjs';
+import {createVerifiedPortraitIndex,curatedPortraitsFor} from './lib/verified-portraits.mjs';
 const root=path.dirname(fileURLToPath(import.meta.url));
 const HOST=process.env.HOST||'127.0.0.1';
 const PORT=Number(process.env.PORT||8787);
@@ -13,6 +14,7 @@ const stored=new Map();
 const ballot=JSON.parse(await readFile(path.join(root,'public','ballot.json'),'utf8'));
 const stats={requests:0,sourceCalls:0,sourceFailures:0};
 const portraitPages=JSON.parse(await readFile(path.join(root,'public','portrait-pages.json'),'utf8'));
+const reviewedPhotos=createVerifiedPortraitIndex(JSON.parse(await readFile(path.join(root,'public','federal-portrait-overrides.json'),'utf8')));
 
 async function upstream(url,{asText=false,windows1252=false,ttl=TTL}={}){
  const cached=stored.get(url);if(cached && Date.now()-cached.t<ttl)return cached.value;
@@ -138,7 +140,9 @@ function cachedPortraits(lookups){
  return {portraits,missed};
 }
 async function performPortraitEnrichment(lookups){
+ const curated=curatedPortraitsFor(lookups,reviewedPhotos);
  const now=Date.now(),pending=lookups.filter(x=>{
+  if(curated[lookupKey(x)])return false;
   const c=enrichmentCache.get(lookupKey(x));return !c||now-c.time>(c.photo?PHOTO_TTL:MISS_TTL);
  });
  let attempted=0,providerError=null;
@@ -172,10 +176,13 @@ async function performPortraitEnrichment(lookups){
   }
  }
  const found=cachedPortraits(lookups);
- return {portraits:found.portraits,requested:lookups.length,matched:Object.keys(found.portraits).length,
-  pending:found.missed,attempted,providerError,
-  provider:'watch.vote',cooldown:Date.now()<portraitCooldownUntil,
-  note:'Verified external portraits only. Missing photographs do not change election results.'};
+ const portraits={...found.portraits,...curated};
+ for(const [key,photo] of Object.entries(curated))
+  portraits[key]={...photo,proxyUrl:'/api/reviewed-candidate-photo?key='+encodeURIComponent(key)};
+ return {portraits,requested:lookups.length,matched:Object.keys(portraits).length,
+  curated:Object.keys(curated).length,pending:Math.max(0,found.missed-Object.keys(curated).length),attempted,providerError,
+  provider:'watch.vote + reviewed Wikimedia Commons',cooldown:Date.now()<portraitCooldownUntil,
+  note:'Verified seat-specific Commons images fill gaps. Photographs never change election results.'};
 }
 async function enrichPortraitRequest(req,res){
  let body;
@@ -188,7 +195,13 @@ async function enrichPortraitRequest(req,res){
  portraitQueue=job.catch(()=>{});
  try{return json(res,await job)}catch(error){
   console.warn('Portrait enrichment unavailable:',error.message);
-  return json(res,{portraits:cachedPortraits(unique).portraits,requested:unique.length,matched:0,pending:unique.length,providerError:error.message,provider:'watch.vote'});
+  const reviewed=curatedPortraitsFor(unique,reviewedPhotos);
+  const photos={...cachedPortraits(unique).portraits};
+  for(const [key,photo] of Object.entries(reviewed))
+   photos[key]={...photo,proxyUrl:'/api/reviewed-candidate-photo?key='+encodeURIComponent(key)};
+  return json(res,{portraits:photos,requested:unique.length,matched:Object.keys(photos).length,
+   curated:Object.keys(reviewed).length,pending:unique.length-Object.keys(photos).length,
+   providerError:error.message,provider:'watch.vote + reviewed Wikimedia Commons'});
  }
 }
 async function getPortraits(){
@@ -201,6 +214,9 @@ async function getPortraits(){
 async function candidatePhoto(name,res){
  const info=officialPortraits[portraitKey(name)];
  if(!info)return json(res,{error:'No verified portrait for this candidate'},404);
+ return serveKnownPhoto(info,res);
+}
+async function serveKnownPhoto(info,res){
  const cached=imageCache.get(info.image);
  try{
   let bytes,contentType;
@@ -244,6 +260,10 @@ const server=http.createServer(async(req,res)=>{
    return enrichPortraitRequest(req,res);
   }
   if(url.pathname==='/api/candidate-photo')return candidatePhoto(url.searchParams.get('name'),res);
+  if(url.pathname==='/api/reviewed-candidate-photo'){
+   const photo=reviewedPhotos.get(url.searchParams.get('key')||'');
+   return photo?serveKnownPhoto(photo,res):json(res,{error:'No reviewed portrait for this candidate and seat'},404);
+  }
   if(url.pathname==='/api/health')return json(res,{ok:true,time:new Date().toISOString(),status:Date.now()<ELECTION_RESULTS_BEGIN.getTime()?'Pre-results — California polls open until 8 p.m. Pacific':'Results period',stats});
   if(url.pathname==='/api/map-topology'){
    // Census-derived boundaries bundled with the us-atlas npm package.
