@@ -24,6 +24,10 @@ jobs:
         if: github.event_name == 'pull_request'
         continue-on-error: true
         run: node scripts/probe-federal-candidate-ids.mjs
+      - name: Probe Wikimedia Commons photo license metadata
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: node scripts/probe-commons-metadata.mjs
       - name: Probe Wikidata FEC ID to Commons portrait availability
         if: github.event_name == 'pull_request'
         continue-on-error: true
