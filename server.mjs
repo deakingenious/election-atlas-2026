@@ -6,6 +6,7 @@ import {parseLA,parseSOS,resolveBallot,resolveMayor,californiaRaces,normalizeOpe
 import {CANDIDATES_CSV,normalizeFederalRoster} from './lib/candidate-rosters.mjs';
 import {normalizeLookup,lookupKey,normalizePortrait,parseBatchPortraits,portraitGetUrl} from './lib/portrait-enrichment.mjs';
 import {createVerifiedPortraitIndex,curatedPortraitsFor} from './lib/verified-portraits.mjs';
+import {validFecId,lookupWikidataCommonsPortraits} from './lib/wikidata-portraits.mjs';
 const root=path.dirname(fileURLToPath(import.meta.url));
 const HOST=process.env.HOST||'127.0.0.1';
 const PORT=Number(process.env.PORT||8787);
@@ -85,6 +86,8 @@ const imageCache=new Map();
 // The externally verified portrait directory is optional. Failure never touches
 // election-result records, their candidate names, or their vote totals.
 const enrichmentCache=new Map();
+const wikidataPhotoCache=new Map();
+let wikidataCooldownUntil=0;
 const providerCalls=[];
 let portraitQueue=Promise.resolve();
 let portraitCooldownUntil=0;
@@ -176,13 +179,46 @@ async function performPortraitEnrichment(lookups){
   }
  }
  const found=cachedPortraits(lookups);
- const portraits={...found.portraits,...curated};
+ const wikidataPhotos={};let wikidataError=null, wikidataQueried=0;
+ const due=[],nowAfter=Date.now();
+ for(const lookup of lookups){
+  const key=lookupKey(lookup),id=validFecId(lookup);
+  if(!id||curated[key]||found.portraits[key])continue;
+  const cached=wikidataPhotoCache.get(id);
+  if(cached&&nowAfter-cached.time<(cached.photo?PHOTO_TTL:MISS_TTL)){
+   if(cached.photo)wikidataPhotos[key]=cached.photo;
+  }else due.push(lookup);
+ }
+ if(due.length && Date.now()>=wikidataCooldownUntil){
+  try{
+   const batch=await lookupWikidataCommonsPortraits(due.slice(0,100));
+   wikidataQueried=batch.queried;
+   for(const lookup of due.slice(0,100)){
+    const id=validFecId(lookup);
+    wikidataPhotoCache.set(id,{photo:batch.photos.get(id)||null,time:Date.now()});
+   }
+  }catch(error){
+   wikidataError=error.message;wikidataCooldownUntil=Date.now()+60*1000;
+   console.warn('Optional Wikimedia portrait lookup unavailable:',error.message);
+  }
+ }
+ for(const lookup of lookups){
+  const key=lookupKey(lookup),id=validFecId(lookup),cached=id&&wikidataPhotoCache.get(id);
+  if(key && cached?.photo && !curated[key] && !found.portraits[key]){
+   wikidataPhotos[key]={...cached.photo,proxyUrl:'/api/wikidata-candidate-photo?fec='+encodeURIComponent(id)};
+  }
+ }
+ const portraits={...wikidataPhotos,...found.portraits,...curated};
  for(const [key,photo] of Object.entries(curated))
   portraits[key]={...photo,proxyUrl:'/api/reviewed-candidate-photo?key='+encodeURIComponent(key)};
  return {portraits,requested:lookups.length,matched:Object.keys(portraits).length,
-  curated:Object.keys(curated).length,pending:Math.max(0,found.missed-Object.keys(curated).length),attempted,providerError,
-  provider:'watch.vote + reviewed Wikimedia Commons',cooldown:Date.now()<portraitCooldownUntil,
-  note:'Verified seat-specific Commons images fill gaps. Photographs never change election results.'};
+  curated:Object.keys(curated).length,wikidata:Object.keys(wikidataPhotos).length,
+  wikidataQueried,wikidataError,
+  pending:Math.max(0,lookups.length-Object.keys(portraits).length),
+  attempted,providerError,provider:'watch.vote + Wikidata FEC ID / Wikimedia Commons + reviewed photos',
+  cooldown:Date.now()<portraitCooldownUntil,
+  note:'Seat-verified and FEC-ID verified photos only. Sources and licenses attributed. No changes to vote data.'};
+
 }
 async function enrichPortraitRequest(req,res){
  let body;
@@ -260,6 +296,11 @@ const server=http.createServer(async(req,res)=>{
    return enrichPortraitRequest(req,res);
   }
   if(url.pathname==='/api/candidate-photo')return candidatePhoto(url.searchParams.get('name'),res);
+  if(url.pathname==='/api/wikidata-candidate-photo'){
+   const id=String(url.searchParams.get('fec')||'').toUpperCase();
+   const cached=wikidataPhotoCache.get(id);
+   return cached?.photo?serveKnownPhoto(cached.photo,res):json(res,{error:'No verified FEC-ID photo cached'},404);
+  }
   if(url.pathname==='/api/reviewed-candidate-photo'){
    const photo=reviewedPhotos.get(url.searchParams.get('key')||'');
    return photo?serveKnownPhoto(photo,res):json(res,{error:'No reviewed portrait for this candidate and seat'},404);
