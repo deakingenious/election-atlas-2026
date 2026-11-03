@@ -34,8 +34,11 @@ test('California SOS party codes are translated from the state codebook',()=>{
 });
 test('Candidate party codes are decoded before the pre-vote roster is displayed',()=>{
  const contest='[R|CAS|1|020000000000|Governor|GG]';
- const candidate='[C|CAS|1|020000000000|10||Becerra|Xavier||01|Xavier Becerra]\\n[C|CAS|2|020000000000|11||Hilton|Steve||02|Steve Hilton]';
- const races=parseSOS(contest,candidate.replace(/\\n/g,'\n'),'').races;
+ const candidate=[
+  '[C|CAS|1|020000000000|10||Becerra|Xavier||01|Xavier Becerra]',
+  '[C|CAS|2|020000000000|11||Hilton|Steve||02|Steve Hilton]'
+ ].join(String.fromCharCode(10));
+ const races=parseSOS(contest,candidate,'').races;
  assert.equal(races.length,1);
  assert.deepEqual(races[0].candidates.map(c=>c.party).sort(),['Democratic','Republican']);
  assert.equal(races[0].reported,false);
