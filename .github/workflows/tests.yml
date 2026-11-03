@@ -19,6 +19,7 @@ jobs:
       - run: node --check lib/adapters.mjs
       - run: node --check lib/candidate-rosters.mjs
       - run: node --check lib/portrait-enrichment.mjs
+      - run: node --check lib/verified-portraits.mjs
       - name: Probe optional live portrait provider contract
         if: github.event_name == 'pull_request'
         continue-on-error: true
