@@ -125,7 +125,7 @@ function candidatePortraitCoverage(){
  for(const r of [...state.ballot,...state.ca,...state.house,...state.senate,...(state.mayor?[state.mayor]:[])]){
   for(const c of r?.candidates||[]){
    const name=String(c.name||'').trim();
-   if(!name||/^(YES|NO|Candidate #\\d+)$/i.test(name))continue;
+   if(!name||/^(?:YES|NO|Candidate #)/i.test(name))continue;
    listed.set(name.toUpperCase().replace(/[^A-Z0-9]/g,''),name);
   }
  }
@@ -157,7 +157,7 @@ document.addEventListener('error',event=>{
  if(!(target instanceof HTMLImageElement)||!target.closest('.candidate-avatar'))return;
  const proxy=target.dataset.proxySrc;
  if(proxy&&!target.dataset.retried){target.dataset.retried='1';target.src=proxy;return}
- target.remove();
+ console.warn('Portrait unavailable for candidate:',target.alt||'Unknown','(official source and proxy failed)');target.remove();
 },true);
 async function asJson(url){const response=await fetch(url,{cache:'no-store'});if(!response.ok)throw Error(`${url}: HTTP ${response.status}`);return response.json()}
 async function loadAll(force=false){if(refreshPromise)return refreshPromise;byId('refresh-button').disabled=true;byId('refresh-icon').classList.add('refreshing');
