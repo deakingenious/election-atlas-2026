@@ -24,6 +24,10 @@ jobs:
         if: github.event_name == 'pull_request'
         continue-on-error: true
         run: node scripts/probe-federal-candidate-ids.mjs
+      - name: Probe Wikidata FEC ID to Commons portrait availability
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: node scripts/probe-wikidata-fec.mjs
       - name: Probe optional live portrait provider contract
         if: github.event_name == 'pull_request'
         continue-on-error: true
