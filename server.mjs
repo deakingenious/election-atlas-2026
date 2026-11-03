@@ -7,6 +7,7 @@ import {CANDIDATES_CSV,normalizeFederalRoster} from './lib/candidate-rosters.mjs
 import {normalizeLookup,lookupKey,normalizePortrait,parseBatchPortraits,portraitGetUrl} from './lib/portrait-enrichment.mjs';
 import {createVerifiedPortraitIndex,curatedPortraitsFor} from './lib/verified-portraits.mjs';
 import {validFecId,lookupWikidataCommonsPortraits} from './lib/wikidata-portraits.mjs';
+import {validBioguideId,lookupBioguidePhotos} from './lib/bioguide-portraits.mjs';
 const root=path.dirname(fileURLToPath(import.meta.url));
 const HOST=process.env.HOST||'127.0.0.1';
 const PORT=Number(process.env.PORT||8787);
@@ -87,6 +88,8 @@ const imageCache=new Map();
 // election-result records, their candidate names, or their vote totals.
 const enrichmentCache=new Map();
 const wikidataPhotoCache=new Map();
+const bioguidePhotoCache=new Map();
+let bioguideCooldownUntil=0;
 let wikidataCooldownUntil=0;
 const providerCalls=[];
 let portraitQueue=Promise.resolve();
@@ -179,11 +182,44 @@ async function performPortraitEnrichment(lookups){
   }
  }
  const found=cachedPortraits(lookups);
+ // Congressional portrait directory is public domain and keyed by Bioguide ID.
+ // Validate image existence, then use it only for the source-roster candidate.
+ const bioguidePhotos={};let bioguideError=null,bioguideQueried=0;
+ const bioDue=[],bioNow=Date.now();
+ for(const lookup of lookups){
+  const key=lookupKey(lookup),id=validBioguideId(lookup);
+  if(!id||curated[key]||found.portraits[key])continue;
+  const cached=bioguidePhotoCache.get(id);
+  if(cached&&bioNow-cached.time<(cached.photo?PHOTO_TTL:MISS_TTL)){
+   if(cached.photo)bioguidePhotos[key]=cached.photo;
+  }else bioDue.push(lookup);
+ }
+ if(bioDue.length&&Date.now()>=bioguideCooldownUntil){
+  try{
+   const result=await lookupBioguidePhotos(bioDue.slice(0,120),{concurrency:8});
+   bioguideQueried=result.queried;
+   const missing=new Set(result.missing);
+   for(const item of bioDue.slice(0,120)){
+    const id=validBioguideId(item),photo=result.photos.get(id);
+    if(photo||missing.has(id))bioguidePhotoCache.set(id,{photo:photo||null,time:Date.now()});
+   }
+   if(result.errors.length){
+    bioguideError=result.errors.slice(0,3).join(' | ');
+    bioguideCooldownUntil=Date.now()+60*1000;
+   }
+  }catch(error){bioguideError=error.message;bioguideCooldownUntil=Date.now()+60*1000}
+ }
+ for(const lookup of lookups){
+  const key=lookupKey(lookup),id=validBioguideId(lookup);
+  const item=id&&bioguidePhotoCache.get(id);
+  if(key&&item?.photo&&!curated[key]&&!found.portraits[key])
+   bioguidePhotos[key]={...item.photo,proxyUrl:'/api/bioguide-candidate-photo?bioguide='+encodeURIComponent(id)};
+ }
  const wikidataPhotos={};let wikidataError=null, wikidataQueried=0;
  const due=[],nowAfter=Date.now();
  for(const lookup of lookups){
   const key=lookupKey(lookup),id=validFecId(lookup);
-  if(!id||curated[key]||found.portraits[key])continue;
+  if(!id||curated[key]||found.portraits[key]||bioguidePhotos[key])continue;
   const cached=wikidataPhotoCache.get(id);
   if(cached&&nowAfter-cached.time<(cached.photo?PHOTO_TTL:MISS_TTL)){
    if(cached.photo)wikidataPhotos[key]=cached.photo;
@@ -204,18 +240,18 @@ async function performPortraitEnrichment(lookups){
  }
  for(const lookup of lookups){
   const key=lookupKey(lookup),id=validFecId(lookup),cached=id&&wikidataPhotoCache.get(id);
-  if(key && cached?.photo && !curated[key] && !found.portraits[key]){
+  if(key && cached?.photo && !curated[key] && !found.portraits[key]&&!bioguidePhotos[key]){
    wikidataPhotos[key]={...cached.photo,proxyUrl:'/api/wikidata-candidate-photo?fec='+encodeURIComponent(id)};
   }
  }
- const portraits={...wikidataPhotos,...found.portraits,...curated};
+ const portraits={...wikidataPhotos,...bioguidePhotos,...found.portraits,...curated};
  for(const [key,photo] of Object.entries(curated))
   portraits[key]={...photo,proxyUrl:'/api/reviewed-candidate-photo?key='+encodeURIComponent(key)};
  return {portraits,requested:lookups.length,matched:Object.keys(portraits).length,
-  curated:Object.keys(curated).length,wikidata:Object.keys(wikidataPhotos).length,
-  wikidataQueried,wikidataError,
+  curated:Object.keys(curated).length,bioguide:Object.keys(bioguidePhotos).length,bioguideQueried,bioguideError,
+  wikidata:Object.keys(wikidataPhotos).length,wikidataQueried,wikidataError,
   pending:Math.max(0,lookups.length-Object.keys(portraits).length),
-  attempted,providerError,provider:'watch.vote + Wikidata FEC ID / Wikimedia Commons + reviewed photos',
+  attempted,providerError,provider:'watch.vote + public-domain Bioguide + Wikidata/Commons + reviewed photos',
   cooldown:Date.now()<portraitCooldownUntil,
   note:'Seat-verified and FEC-ID verified photos only. Sources and licenses attributed. No changes to vote data.'};
 
@@ -296,6 +332,11 @@ const server=http.createServer(async(req,res)=>{
    return enrichPortraitRequest(req,res);
   }
   if(url.pathname==='/api/candidate-photo')return candidatePhoto(url.searchParams.get('name'),res);
+  if(url.pathname==='/api/bioguide-candidate-photo'){
+   const id=String(url.searchParams.get('bioguide')||'').toUpperCase();
+   const cached=/^[A-Z][0-9]{6}$/.test(id)&&bioguidePhotoCache.get(id);
+   return cached?.photo?serveKnownPhoto(cached.photo,res):json(res,{error:'No verified Bioguide portrait cached'},404);
+  }
   if(url.pathname==='/api/wikidata-candidate-photo'){
    const id=String(url.searchParams.get('fec')||'').toUpperCase();
    const cached=wikidataPhotoCache.get(id);

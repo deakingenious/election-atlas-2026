@@ -21,6 +21,7 @@ jobs:
       - run: node --check lib/portrait-enrichment.mjs
       - run: node --check lib/verified-portraits.mjs
       - run: node --check lib/wikidata-portraits.mjs
+      - run: node --check lib/bioguide-portraits.mjs
       - name: Inspect optional FEC candidate IDs for future portrait matching
         if: github.event_name == 'pull_request'
         continue-on-error: true
@@ -33,6 +34,10 @@ jobs:
         if: github.event_name == 'pull_request'
         continue-on-error: true
         run: node scripts/probe-wikidata-fec.mjs
+      - name: Check Bioguide portrait coverage
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: node scripts/probe-bioguide-coverage.mjs
       - name: Probe optional live portrait provider contract
         if: github.event_name == 'pull_request'
         continue-on-error: true
