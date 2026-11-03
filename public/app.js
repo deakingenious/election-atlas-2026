@@ -77,11 +77,14 @@ async function enrichFederalPortraits(){
     ui.federalPhotoStats.requested+=batch.length;
     ui.federalPhotoStats.matched=Object.keys(ui.federalPortraits).length;
     ui.federalPhotoStats.unavailable+=data.pending||0;
-    ui.federalPhotoStats.lastError=data.providerError||null;
+    ui.federalPhotoStats.lastError=[data.providerError,data.wikidataError].filter(Boolean).join(' | ')||null;
     ui.federalPhotoStats.cooldown=Boolean(data.cooldown);
     applyFederalPhotos();
     if(ui.view==='national'||ui.view==='sources')render();
     // Rate-limit and upstream errors are surfaced without stopping races.
+    if(data.wikidataError){
+     for(const item of batch)if(!ui.federalPortraits[federalPhotoKey(item)])ui.federalPhotoRequested.delete(federalPhotoKey(item));
+    }
     if(data.cooldown){
      for(const item of batch)if(!ui.federalPortraits[federalPhotoKey(item)])ui.federalPhotoRequested.delete(federalPhotoKey(item));
      break;
