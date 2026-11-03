@@ -21,6 +21,7 @@ jobs:
       - run: node --check lib/portrait-enrichment.mjs
       - run: node --check lib/verified-portraits.mjs
       - run: node --check lib/wikidata-portraits.mjs
+      - run: node --check lib/bioguide-portraits.mjs
       - name: Inspect optional FEC candidate IDs for future portrait matching
         if: github.event_name == 'pull_request'
         continue-on-error: true
