@@ -110,3 +110,15 @@ For federal candidates not covered by the verified watch.vote directory or the r
 - Photo lookups are optional and separate from all election-result API calls. Candidate rosters, votes and state filters remain accessible if Wikidata, Commons or watch.vote fails. Cache misses briefly, cache photos longer, and cool down after upstream errors.
 
 A valid FEC ID does not guarantee that Wikidata has a matching person with an openly licensed photograph. The app will show initials when the exact matching process returns no usable image. The curated Michigan Senate overrides remain an independent fallback.
+
+## Official Bioguide portrait fallback
+
+A fourth source now supplies official historical/current congressional portraits from the public-domain [@unitedstates/images](https://github.com/unitedstates/images) project, indexed by a candidate's **Bioguide ID**. The 2026 candidate CSV has Bioguide IDs for a subset of candidates who have served in Congress (live audit on November 3: 21 of 123 Senate candidate records, 351 of 1,171 House candidate records). An ID is copied from the candidate record into the matched House/Senate race; no photo is assigned by searching a candidate's name.
+
+- URL template: `https://unitedstates.github.io/images/congress/225x275/<BIOGUIDE>.jpg` using a strictly validated Bioguide ID.
+- Server confirms `HTTP 200` and `image/jpeg` with `HEAD` before adding the photograph. Verified images are cached for 24 hours; missing images for 6 hours. Unresponsive hosts use a brief cooldown rather than taking down election results.
+- Retains a same-origin image proxy for the verified URL and keeps photo source and license attribution in candidate details.
+- The existing reviewed Wikimedia overrides and watch.vote matches take precedence. Bioguide works without a Wikidata FEC property and can cover current/former members who otherwise show initials. A nonincumbent who has never served in Congress won't have a Bioguide ID; such candidates need a different identity-verified and freely usable source.
+- This is optional data, not election evidence. Failing photograph lookups never affect vote totals, candidates or the 435 House / 35 Senate inventory.
+
+Reference: [@unitedstates/images public-domain dedication](https://github.com/unitedstates/images#public-domain).
