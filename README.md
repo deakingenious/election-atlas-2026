@@ -1,6 +1,6 @@
 # Election Atlas — November 3, 2026
 
-A premium, self-hosted election-night dashboard with a **personal 54-item Azusa ballot**, the **Los Angeles mayoral race**, **all California State Assembly (80), State Senate (20 scheduled) and Governor races**, **all 435 U.S. House seats**, **35 scheduled U.S. Senate races**, and a clickable 50-state results cartogram.
+A premium, self-hosted election-night dashboard with a **personal 54-item Azusa ballot**, the **Los Angeles mayoral race**, **all California State Assembly (80), State Senate (20 scheduled) and Governor races**, **all 435 U.S. House seats**, **35 scheduled U.S. Senate races**, and a clickable 50-state geographic choropleth map with Alaska/Hawaii insets.
 
 ## Start (no installation or API keys)
 
@@ -57,3 +57,9 @@ No npm packages are required, no tracking or analytics, and no ballot selections
 3. California legislative lists cover the scheduled 20 even-numbered Senate seats and 80 Assembly seats, and do not assume unscheduled special elections.
 4. State tiles are an interactive **cartogram, not a boundary-accurate map**. Their color reflects leading parties in available reported House district counts, not statewide party preference, seat calls, or certification.
 5. App was assembled before polls closed. We could test parsing on published pre-election feeds but **could not verify the post-8:00 p.m. feed schema or returns in advance**.
+
+## Geographic U.S. map
+
+The U.S. map uses Census-derived state boundaries via the ISC-licensed [us-atlas](https://github.com/topojson/us-atlas) package. Render installs this dependency with npm install. The server exposes projected TopoJSON at /api/map-topology and the dashboard converts it to an interactive SVG. No browser CDN, API key or external map service is required.
+
+Gray indicates no reported votes. When reporting, state fills identify which party leads in more of that state's **reporting U.S. House districts**; they do not indicate race calls, projected winners, or statewide vote totals. Select a state for its district breakdown.
