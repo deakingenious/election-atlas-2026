@@ -17,7 +17,7 @@ function candidatePortrait(c,large=false){
  const photo=c.enrichedPortrait?.image?c.enrichedPortrait:ui.portraits[key];
  const initials=String(c.name||'?').split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join('').toUpperCase();
  const fallback=`<span class="candidate-avatar-initials" aria-hidden="true">${html(initials)}</span>`;
- return `<span class="candidate-avatar ${large?'candidate-avatar-large':''} ${partyClass(c)}">${fallback}${photo?.image?`<img alt="Portrait of ${html(c.name)}" loading="${large?'eager':'lazy'}" decoding="async" referrerpolicy="no-referrer" data-photo-key="${html(key)}" data-proxy-src="${html(photo.proxyUrl||'')}" src="${html(photo.image)}"/>`:''}</span>`;
+ return `<span class="candidate-avatar ${large?'candidate-avatar-large':''} ${partyClass(c)}">${fallback}${photo?.image?`<img alt="Portrait of ${html(c.name)}" loading="${large?'eager':'lazy'}" decoding="async" referrerpolicy="no-referrer" data-photo-key="${html(key)}" title="${html([photo.credit,photo.license].filter(Boolean).join(' · '))}" data-proxy-src="${html(photo.proxyUrl||'')}" src="${html(photo.image)}"/>`:''}</span>`;
 }
 function candidateShort(c){const p=partyClass(c);return c.name==='YES'||c.name==='NO'?c.name:(p==='dem'?'D':p==='rep'?'R':'•')}
 function sourceTag(r){const label=r.scope?.includes('Los Angeles')?'LA COUNTY':r.scope?.includes('California')?'STATEWIDE / DISTRICT':'SOURCE LIMITED';return `<span class="data-tag ${label==='LA COUNTY'?'source-la':'source-ca'}">${label}</span>`;}
@@ -191,10 +191,10 @@ function candidatePortraitCoverage(){
   for(const c of r?.candidates||[]){
    const name=String(c.name||'').trim();
    if(!name||/^(?:YES|NO|Candidate #)/i.test(name))continue;
-   listed.set(name.toUpperCase().replace(/[^A-Z0-9]/g,''),name);
+   const key=name.toUpperCase().replace(/[^A-Z0-9]/g,'');listed.set(key,(listed.get(key)||false)||Boolean(c.enrichedPortrait?.image||ui.portraits[key]?.image));
   }
  }
- const linked=[...listed.keys()].filter(key=>Boolean(ui.portraits[key])).length;
+ const linked=[...listed.values()].filter(Boolean).length;
  return {listed:listed.size,linked,missing:Math.max(0,listed.size-linked)};
 }
 function sourcesView(){const sources=[{name:'Los Angeles County Registrar',description:'November 3 official county feed: the 54-item local contests, city of Los Angeles mayor, all LA County judge races and county measures.',url:serverURLs.la,group:'Official',status:state.sources.find(x=>x.name==='Los Angeles County')},{name:'California Secretary of State',description:'Official statewide/districtwide returns from 2026 C/R/V election-night files, covering the 80 Assembly, 20 Senate, statewide candidates and 14 propositions.',url:'https://media.sos.ca.gov/',group:'Official',status:state.sources.find(x=>x.name==='California SOS')},{name:'Open America',description:'Public national feed of reported U.S. House and Senate results from 22 state election-office adapters. It provides reported counts but does not call winners.',url:serverURLs.national,group:'National',status:state.nationalMeta.house?.sources?.[0]},{name:'watch.vote',description:'Additional national public API with reported vote data and attributable source references. Data may change and coverage is not guaranteed.',url:serverURLs.watch,group:'National',status:state.nationalMeta.house?.sources?.[1]}];
@@ -213,7 +213,7 @@ function enableEvents(){
  byId('refresh-button').addEventListener('click',()=>loadAll(true));
  byId('theme-button').addEventListener('click',()=>{ui.theme=ui.theme==='dark'?'light':'dark';document.body.dataset.theme=ui.theme;localStorage.setItem('atlasThemeV2',ui.theme)});
  byId('mobile-menu').addEventListener('click',()=>$('.sidebar').classList.toggle('open'));
- document.body.addEventListener('change',e=>{if(e.target.id==='national-state'){ui.nationalState=e.target.value;ui.page=1;render()}if(e.target.id==='only-reporting'){ui.onlyReporting=e.target.checked;ui.page=1;render()}if(e.target.id==='demo-switch'){ui.demo=e.target.checked;ui.page=1;ui.expanded.clear();render()}});
+ document.body.addEventListener('change',e=>{if(e.target.id==='national-state'){ui.nationalState=e.target.value;ui.page=1;render();enrichFederalPortraits()}if(e.target.id==='only-reporting'){ui.onlyReporting=e.target.checked;ui.page=1;render()}if(e.target.id==='demo-switch'){ui.demo=e.target.checked;ui.page=1;ui.expanded.clear();render()}});
 }
 // If an external photo host blocks hotlinking, retry via our same-origin image route.
 // Keep the initials visible if neither source can serve the verified headshot.
